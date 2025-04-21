@@ -42,40 +42,40 @@ const ConnectAccounts = () => {
   useEffect(() => {
     // Récupérer le token JWT - IMPORTANT pour la liaison des comptes
     const storedToken = localStorage.getItem('auth_token'); 
-    console.log('the token is',storedToken);
+    // console.log('the token is',storedToken);
       if (storedToken) {
       setToken(storedToken);
-      console.log("Token JWT récupéré du localStorage");
+      // console.log("Token JWT récupéré du localStorage");
     }
     
     // Récupérer l'ID utilisateur
     const storedUserId = localStorage.getItem('userId') || localStorage.getItem('user_id');
     if (storedUserId) {
       setUserId(storedUserId);
-      console.log(`ID utilisateur récupéré du localStorage: ${storedUserId}`);
+      // console.log(`ID utilisateur récupéré du localStorage: ${storedUserId}`);
     }
     
     // Récupérer le username
     const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
     if (storedUsername) {
       setUsername(storedUsername);
-      console.log(`Username récupéré: ${storedUsername}`);
+      // console.log(`Username récupéré: ${storedUsername}`);
     }
     
     // Récupérer l'adresse du wallet
     const storedWalletAddress = localStorage.getItem('walletAddress');
     if (storedWalletAddress) {
       setWalletAddress(storedWalletAddress);
-      console.log(`Adresse wallet récupérée: ${storedWalletAddress}`);
+      // console.log(`Adresse wallet récupérée: ${storedWalletAddress}`);
     }
     
     // Si on a un token, récupérer les infos utilisateur depuis l'API
     if (storedToken) {
       // Debug logs for auth/me request
-      console.log("Appel API pour récupérer les informations utilisateur via /auth/me");
-      console.log("API_BASE_URL:", API_BASE_URL);
-      console.log("GET URL:", `${API_BASE_URL}/auth/me`);
-      console.log("Request headers:", { Authorization: `Bearer ${storedToken}` });
+      // console.log("Appel API pour récupérer les informations utilisateur via /auth/me");
+      // console.log("API_BASE_URL:", API_BASE_URL);
+      // console.log("GET URL:", `${API_BASE_URL}/auth/me`);
+      // console.log("Request headers:", { Authorization: `Bearer ${storedToken}` });
       axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${storedToken}` }
       })
@@ -85,7 +85,7 @@ const ConnectAccounts = () => {
           // Stocker l'ID et referralCode dans le state et localStorage si besoin
           localStorage.setItem('userId', data._id);
           setUserId(data._id);
-          console.log(`ID utilisateur récupéré de l'API: ${data._id}`);
+          // console.log(`ID utilisateur récupéré de l'API: ${data._id}`);
           
           if (data.name) {
             setUsername(data.name);
@@ -128,13 +128,13 @@ const ConnectAccounts = () => {
 
       // Méthode 1: Utiliser l'API si un token est disponible
       if (token) {
-        console.log(`Récupération du solde de token via API pour l'adresse: ${targetAddress}`);
+        // console.log(`Récupération du solde de token via API pour l'adresse: ${targetAddress}`);
         const response = await axios.get(`${API_BASE_URL}/users/token-balance/${targetAddress}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
         if (response.data.status === "success") {
-          console.log(`Solde récupéré depuis l'API: ${response.data.balance}`);
+          // console.log(`Solde récupéré depuis l'API: ${response.data.balance}`);
           setTokenBalance(response.data.balance);
           return response.data.balance;
         } else {
@@ -143,7 +143,7 @@ const ConnectAccounts = () => {
       } 
       // Méthode 2: Utiliser ethers.js directement (comme fallback)
       else {
-        console.log(`Récupération directe du solde de token avec ethers.js pour: ${targetAddress}`);
+        // console.log(`Récupération directe du solde de token avec ethers.js pour: ${targetAddress}`);
         const provider = window.ethereum
           ? new ethers.providers.Web3Provider(window.ethereum)
           : ethers.getDefaultProvider();
@@ -155,7 +155,7 @@ const ConnectAccounts = () => {
         ]);
         
         const formatted = ethers.utils.formatUnits(rawBalance, decimals);
-        console.log(`Solde récupéré directement: ${formatted}`);
+        // console.log(`Solde récupéré directement: ${formatted}`);
         setTokenBalance(formatted);
         return formatted;
       }
@@ -263,7 +263,7 @@ const ConnectAccounts = () => {
       const address = await signer.getAddress();
       setWalletAddress(address);
       localStorage.setItem("walletAddress", address);
-      console.log("Wallet connected:", address);
+      // console.log("Wallet connected:", address);
       
       // Récupérer le solde du token après la connexion du wallet
       fetchTokenBalance(address);
@@ -275,7 +275,7 @@ const ConnectAccounts = () => {
 
   // Function to handle World ID verification
   const handleWorldIDVerification = async (provider) => {
-    console.log(`Starting World ID verification before ${provider} login`);
+    // console.log(`Starting World ID verification before ${provider} login`);
     
     // Vérifier qu'on a l'ID utilisateur
     if (!userId) {
@@ -284,7 +284,7 @@ const ConnectAccounts = () => {
       return;
     }
     
-    console.log(`ID utilisateur pour liaison: ${userId}`);
+    // console.log(`ID utilisateur pour liaison: ${userId}`);
     
     // Éviter les vérifications multiples
     if (isVerifying) {
@@ -322,23 +322,23 @@ const ConnectAccounts = () => {
         verification_level: VerificationLevel.Orb,
       };
       
-      console.log("Sending verify command with payload:", verifyPayload);
+      // console.log("Sending verify command with payload:", verifyPayload);
       
       try {
         // Envoyer la commande de vérification à MiniKit
         const miniKitResult = await MiniKit.commandsAsync.verify(verifyPayload);
-        console.log("Raw response from MiniKit:", miniKitResult);
+        // console.log("Raw response from MiniKit:", miniKitResult);
 
         if (miniKitResult.finalPayload.status === "success") {
-          console.log("User info:", MiniKit.user);
+          // console.log("User info:", MiniKit.user);
           // Vérifier si username est disponible
           if (MiniKit.user && MiniKit.user.username) {
-            console.log("Username:", MiniKit.user.username);
+            // console.log("Username:", MiniKit.user.username);
           }
         }
         
         const { finalPayload } = miniKitResult;
-        console.log("Received final payload:", finalPayload);
+        // console.log("Received final payload:", finalPayload);
         
         // Vérifier si la vérification a réussi
         if (!finalPayload || finalPayload.status === "error") {
@@ -353,12 +353,12 @@ const ConnectAccounts = () => {
         }
         
         if (finalPayload.status === "success") {
-          console.log("MiniKit verification successful, sending to backend");
+          // console.log("MiniKit verification successful, sending to backend");
           
           try {
             // Envoyer la preuve au backend pour vérification
-            console.log("Sending verification to backend with walletAddress:", walletAddress);
-            console.log("User ID for linking:", userId);
+            // console.log("Sending verification to backend with walletAddress:", walletAddress);
+            // console.log("User ID for linking:", userId);
             
             const response = await axios.post(`${API_BASE_URL}/users/verify-social`, {
               walletAddress,
@@ -370,11 +370,11 @@ const ConnectAccounts = () => {
               headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
             
-            console.log("Backend verification response:", response.data);
+            // console.log("Backend verification response:", response.data);
             
             // Vérifier si la vérification a réussi sur le serveur
             if (response.data.verified) {
-              console.log("Backend confirmed verification success");
+              // console.log("Backend confirmed verification success");
               
               // Afficher une notification de succès
               setNotification({
@@ -390,8 +390,8 @@ const ConnectAccounts = () => {
                 timestamp: Date.now()
               }));
               
-              console.log(`Redirection avec state encodé: ${state}`);
-              console.log(`État décodé:`, JSON.parse(atob(state)));
+              // console.log(`Redirection avec state encodé: ${state}`);
+              // console.log(`État décodé:`, JSON.parse(atob(state)));
               
               // Construire l'URL avec les paramètres corrects
               let redirectUrl = `${API_BASE_URL}/auth/${provider.toLowerCase()}?state=${state}`;

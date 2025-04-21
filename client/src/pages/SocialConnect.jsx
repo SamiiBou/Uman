@@ -259,7 +259,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
       // IMPORTANT: Stocker la clé S3 et l'URL dans localStorage
       localStorage.setItem('idCardS3Key', response.data.key);
       localStorage.setItem('s3CardUrl', response.data.url);
-      console.log("S3 key saved:", response.data.key);
+      // console.log("S3 key saved:", response.data.key);
       
       setNotification({
         show: true,
@@ -331,7 +331,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
         if (Object.values(connectedAccounts).filter(Boolean).length === 3 && !idCardS3Key) {
           const uploadResult = await uploadIdCardToS3(blob);
           if (uploadResult) {
-            console.log('ID Card uploaded to S3:', uploadResult);
+            // console.log('ID Card uploaded to S3:', uploadResult);
             // Stocker l'URL et la clé dans le localStorage
             setS3CardUrl(uploadResult.url);
             setIdCardS3Key(uploadResult.key);

@@ -14,8 +14,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
         sessionStorage.setItem('minikitInitialized', 'true');
         
         setIsInitialized(true);
-        console.log("MiniKit initialized successfully");
-        console.log("MiniKit V2");
+        
       } catch (error) {
         console.error("Error initializing MiniKit:", error);
         setIsInitialized(true); // Continue anyway to avoid blocking the app
@@ -30,8 +29,7 @@ export default function MiniKitProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  console.log("Is MiniKit installed correctly? ", MiniKit.isInstalled());
-  console.log("Hope Yes");
+ 
 
   // Show loading state while MiniKit is initializing
   if (!isInitialized) {

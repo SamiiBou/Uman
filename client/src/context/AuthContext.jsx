@@ -46,12 +46,10 @@ export const AuthProvider = ({ children }) => {
         return;
     }
     setLoading(true);
-    console.log('[AuthContext] Fetching user with token...');
     try {
       // Utilise l'instance Axios configurée avec l'intercepteur
       const response = await apiClient.get('/auth/me'); 
       setUser(response.data);
-      console.log('[AuthContext] User fetched successfully:', response.data?.name || response.data?.id);
     } catch (error) {
       console.error('[AuthContext] Failed to fetch user:', error.response?.data?.message || error.message);
       // Token invalide ou expiré ? -> Déconnexion
@@ -64,21 +62,18 @@ export const AuthProvider = ({ children }) => {
 
   // Effet pour charger l'utilisateur au montage initial si un token existe
   useEffect(() => {
-    console.log('[AuthContext] Initial load. Token found:', !!token);
     fetchUser(); 
   }, [token, fetchUser]); // Dépend de fetchUser qui dépend de token et storeToken
 
 
   // Fonction de connexion (appelée par AuthCallback)
   const login = useCallback((newToken) => {
-    console.log('[AuthContext] Login called with new token.');
     storeToken(newToken);
     // fetchUser sera appelé automatiquement par l'useEffect dépendant de `token`
   }, [storeToken]);
 
   // Fonction de déconnexion
   const logout = useCallback(async () => {
-    console.log('[AuthContext] Logout called.');
     setUser(null);
     storeToken(null); // Supprime le token du localStorage et de l'état
     // Optionnel : Appeler une route backend pour invalider le token si nécessaire

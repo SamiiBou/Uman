@@ -127,7 +127,7 @@ const RewardsHub = () => {
       // Cap at maximum reward
       if (initial > todaysReward) {
         initial = todaysReward;
-        console.log("[REWARDS HUB] Compteur plafonné au montant maximal:", todaysReward);
+        // console.log("[REWARDS HUB] Compteur plafonné au montant maximal:", todaysReward);
       }
       
       // Set initial counter value
@@ -158,44 +158,44 @@ const RewardsHub = () => {
   
   // Load user data on component mount (similar to ConnectAccounts)
   useEffect(() => {
-    console.log("Loading user data...");
+    // console.log("Loading user data...");
     setIsLoading(true);
     
     // Retrieve JWT token from localStorage
     const storedToken = localStorage.getItem('auth_token'); 
     if (storedToken) {
       setToken(storedToken);
-      console.log("JWT token retrieved from localStorage");
+      // console.log("JWT token retrieved from localStorage");
     }
     
     // Retrieve user ID from localStorage
     const storedUserId = localStorage.getItem('userId') || localStorage.getItem('user_id');
     if (storedUserId) {
       setUserId(storedUserId);
-      console.log(`User ID retrieved from localStorage: ${storedUserId}`);
+      // console.log(`User ID retrieved from localStorage: ${storedUserId}`);
     }
     
     // Retrieve username from localStorage
     const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
     if (storedUsername) {
       setUsername(storedUsername);
-      console.log(`Username retrieved: ${storedUsername}`);
+      // console.log(`Username retrieved: ${storedUsername}`);
     }
     
     // Retrieve wallet address from localStorage
     const storedWalletAddress = localStorage.getItem('walletAddress');
     if (storedWalletAddress) {
       setWalletAddress(storedWalletAddress);
-      console.log(`Wallet address retrieved: ${storedWalletAddress}`);
+      // console.log(`Wallet address retrieved: ${storedWalletAddress}`);
     }
     
     // If we have a token, fetch user info from the API
     if (storedToken) {
       // Debug logs for auth/me request
-      console.log("Calling API to retrieve user information via /auth/me");
-      console.log("API_BASE_URL:", API_BASE_URL);
-      console.log("GET URL:", `${API_BASE_URL}/auth/me`);
-      console.log("Request headers:", { Authorization: `Bearer ${storedToken}` });
+      // console.log("Calling API to retrieve user information via /auth/me");
+      // console.log("API_BASE_URL:", API_BASE_URL);
+      // console.log("GET URL:", `${API_BASE_URL}/auth/me`);
+      // console.log("Request headers:", { Authorization: `Bearer ${storedToken}` });
       
       axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${storedToken}` }
@@ -206,7 +206,7 @@ const RewardsHub = () => {
           // Store ID and referralCode in state and localStorage if needed
           localStorage.setItem('userId', data._id);
           setUserId(data._id);
-          console.log(`User ID retrieved from API: ${data._id}`);
+          // console.log(`User ID retrieved from API: ${data._id}`);
           
           if (data.name) {
             setUsername(data.name);
@@ -221,7 +221,7 @@ const RewardsHub = () => {
           // Set human verification status
           if (data.verified === true) {
             setIsHumanVerified(true);
-            console.log("User is human verified");
+            // console.log("User is human verified");
           }
           
           // Set social verification state and profile image
@@ -267,20 +267,20 @@ const RewardsHub = () => {
     try {
       const targetAddress = address || walletAddress;
       if (!targetAddress || !TOKEN_CONTRACT_ADDRESS) {
-        console.log("Missing wallet address or contract address to retrieve balance");
+        // console.log("Missing wallet address or contract address to retrieve balance");
         return null;
       }
 
       // Method 1: Use API if a token is available (retrieve from state or localStorage)
       const authToken = token || localStorage.getItem('auth_token');
       if (authToken) {
-        console.log(`Retrieving token balance via API for address: ${targetAddress}`);
+        // console.log(`Retrieving token balance via API for address: ${targetAddress}`);
         const response = await axios.get(`${API_BASE_URL}/users/token-balance/${targetAddress}`, {
           headers: { Authorization: `Bearer ${authToken}` }
         });
         
         if (response.data.status === "success") {
-          console.log(`Balance retrieved from API: ${response.data.balance}`);
+          // console.log(`Balance retrieved from API: ${response.data.balance}`);
           setUmiBalance(parseFloat(response.data.balance));
           return response.data.balance;
         } else {
@@ -288,7 +288,7 @@ const RewardsHub = () => {
         }
       } else {
         // Method 2: Use ethers.js directly (as fallback)
-        console.log(`Direct retrieval of token balance with ethers.js for: ${targetAddress}`);
+        // console.log(`Direct retrieval of token balance with ethers.js for: ${targetAddress}`);
         const provider = window.ethereum
           ? new ethers.providers.Web3Provider(window.ethereum)
           : ethers.getDefaultProvider();
@@ -300,7 +300,7 @@ const RewardsHub = () => {
         ]);
         
         const formatted = ethers.utils.formatUnits(rawBalance, decimals);
-        console.log(`Balance retrieved directly: ${formatted}`);
+        // console.log(`Balance retrieved directly: ${formatted}`);
         setUmiBalance(parseFloat(formatted));
         return formatted;
       }
@@ -338,11 +338,11 @@ const RewardsHub = () => {
   
   // Function to fetch daily login streak data
   const fetchDailyLoginData = async (authToken) => {
-    console.log("[REWARDS HUB] Début de récupération des données de login quotidien");
-    console.log("[REWARDS HUB] Token d'authentification:", authToken ? `${authToken.substring(0, 5)}...${authToken.substring(authToken.length - 5)}` : "Non défini");
+    // console.log("[REWARDS HUB] Début de récupération des données de login quotidien");
+    // console.log("[REWARDS HUB] Token d'authentification:", authToken ? `${authToken.substring(0, 5)}...${authToken.substring(authToken.length - 5)}` : "Non défini");
     
     try {
-      console.log(`[REWARDS HUB] Appel API vers: ${API_BASE_URL}/users/daily-login`);
+      // console.log(`[REWARDS HUB] Appel API vers: ${API_BASE_URL}/users/daily-login`);
       
       const startTime = performance.now();
       const res = await axios.post(`${API_BASE_URL}/users/daily-login`, {}, {
@@ -350,7 +350,7 @@ const RewardsHub = () => {
       });
       const endTime = performance.now();
       
-      console.log(`[REWARDS HUB] Réponse API reçue en ${(endTime - startTime).toFixed(2)}ms:`, res.data);
+      // console.log(`[REWARDS HUB] Réponse API reçue en ${(endTime - startTime).toFixed(2)}ms:`, res.data);
       
       // Détails sur le streak
       console.log("[REWARDS HUB] Information de streak:", {

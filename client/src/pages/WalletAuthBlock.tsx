@@ -21,15 +21,15 @@ export const WalletAuthBlock = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (MiniKit.isInstalled()) {
-        console.log("MiniKit is installed, checking status...");
-        console.log("Initial MiniKit.walletAddress:", MiniKit.walletAddress);
+        // console.log("MiniKit is installed, checking status...");
+        // console.log("Initial MiniKit.walletAddress:", MiniKit.walletAddress);
         
         // Vérifier si MiniKit est prêt
         if (!MiniKit.walletAddress) {
-          console.log("MiniKit not fully initialized yet, will check during auth flow");
+          // console.log("MiniKit not fully initialized yet, will check during auth flow");
         }
       } else {
-        console.log("MiniKit not installed");
+        // console.log("MiniKit not installed");
       }
       
       setMiniKitInitialized(true);
@@ -44,23 +44,23 @@ export const WalletAuthBlock = () => {
     
     while (retries < maxRetries) {
       if (MiniKit.walletAddress) {
-        console.log("Found wallet address:", MiniKit.walletAddress);
+        // console.log("Found wallet address:", MiniKit.walletAddress);
         return MiniKit.walletAddress;
       }
       
-      console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
+      // console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
       // Attendre 500ms avant de réessayer
       await new Promise(resolve => setTimeout(resolve, 1500));
       retries++;
     }
     
-    console.log("Could not obtain wallet address after retries");
+    // console.log("Could not obtain wallet address after retries");
     return null;
   };
 
   // Fonction d'authentification wallet
   const handleWalletAuth = useCallback(async () => {
-    console.log("=== Starting handleWalletAuth ===");
+    // console.log("=== Starting handleWalletAuth ===");
     
     // Empêcher plusieurs appels
     if (isLoading) {
@@ -80,7 +80,7 @@ export const WalletAuthBlock = () => {
     
     // Vérifier si MiniKit est installé
     if (!MiniKit || !MiniKit.isInstalled()) {
-      console.log("MiniKit not installed, using development mode");
+      // console.log("MiniKit not installed, using development mode");
       
       // Simuler une connexion réussie en mode développement
       localStorage.setItem("isAuthenticated", "true");
@@ -128,7 +128,7 @@ export const WalletAuthBlock = () => {
       }
       
       // *** IMPORTANT: Attendre que le wallet address soit disponible
-      console.log("Auth successful, now waiting for MiniKit wallet address to be available");
+      // console.log("Auth successful, now waiting for MiniKit wallet address to be available");
       const walletAdressePayLoad = await MiniKit.commandsAsync.walletAuth({
         nonce,
         requestId: "0",
@@ -137,9 +137,9 @@ export const WalletAuthBlock = () => {
         statement: "Sign in to SocialID - Connect with blockchain.",
       });
 
-      console.log("Auth successful, now waiting for MiniKit wallet address to be available");
+      // console.log("Auth successful, now waiting for MiniKit wallet address to be available");
       const walletAddress = walletAdressePayLoad.finalPayload.address;
-      console.log("Wallet address after auth:", walletAddress);
+      // console.log("Wallet address after auth:", walletAddress);
 
 
       // const testResult = await MiniKit.commandsAsync.walletAuth({
@@ -157,31 +157,31 @@ export const WalletAuthBlock = () => {
       
       if (walletAddress) {
         try {
-          console.log("Attempting to fetch MiniKit username using getUserByAddress");
+          // console.log("Attempting to fetch MiniKit username using getUserByAddress");
           const minikitUser = await MiniKit.getUserByAddress(walletAddress);
-          console.log('The minikit user is', minikitUser);
+          // console.log('The minikit user is', minikitUser);
           
           if (minikitUser && minikitUser.username) {
             minikitUsername = minikitUser.username;
-            console.log("Successfully retrieved MiniKit username:", minikitUsername);
+            // console.log("Successfully retrieved MiniKit username:", minikitUsername);
             
             // Cacher ce username immédiatement
             localStorage.setItem('user_username', minikitUsername);
             localStorage.setItem('username', minikitUsername);
           } else {
-            console.log("MiniKit returned user data but no username");
+            // console.log("MiniKit returned user data but no username");
             
             // Fallbacks comme dans l'original en cas d'échec
             const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
             if (storedUsername) {
               minikitUsername = storedUsername;
-              console.log("Using stored username from localStorage:", minikitUsername);
+              // console.log("Using stored username from localStorage:", minikitUsername);
             } else {
               // Dernier recours: demander à l'utilisateur
               const promptedUsername = prompt("Please enter your preferred username:");
               if (promptedUsername && promptedUsername.trim()) {
                 minikitUsername = promptedUsername.trim();
-                console.log("User provided username via prompt:", minikitUsername);
+                // console.log("User provided username via prompt:", minikitUsername);
               }
             }
           }
@@ -192,25 +192,25 @@ export const WalletAuthBlock = () => {
           const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
           if (storedUsername) {
             minikitUsername = storedUsername;
-            console.log("Using stored username from localStorage:", minikitUsername);
+            // console.log("Using stored username from localStorage:", minikitUsername);
           } else {
             const promptedUsername = prompt("Please enter your preferred username:");
             if (promptedUsername && promptedUsername.trim()) {
               minikitUsername = promptedUsername.trim();
-              console.log("User provided username via prompt:", minikitUsername);
+              // console.log("User provided username via prompt:", minikitUsername);
             }
           }
         }
       }
       
-      console.log("Final username to use:", minikitUsername);
+      // console.log("Final username to use:", minikitUsername);
       
       // Récupérer l'adresse du wallet à utiliser (de l'auth payload ou de MiniKit)
       const addrToUse = authPayload.address || walletAddress;
       
       // CORRECTION: Envoyer le username comme un champ séparé
-      console.log("Sending SIWE payload to backend with username:", minikitUsername);
-      console.log("Using wallet address:", addrToUse);
+      // console.log("Sending SIWE payload to backend with username:", minikitUsername);
+      // console.log("Using wallet address:", addrToUse);
         
       const siweResponse = await axios.post(
           `${BACKEND_URL}/api/auth/complete-siwe`,
@@ -241,7 +241,7 @@ export const WalletAuthBlock = () => {
         if (siweResponse.data.token) {
             localStorage.setItem("token", siweResponse.data.token);
             localStorage.setItem("auth_token", siweResponse.data.token); // Stocker dans les deux formats pour compatibilité
-            console.log("Token JWT stocké avec succès");
+            // console.log("Token JWT stocké avec succès");
           } else {
             console.error("Aucun token reçu du serveur!");
           }
@@ -249,7 +249,7 @@ export const WalletAuthBlock = () => {
           if (siweResponse.data.userId) {
             localStorage.setItem("userId", siweResponse.data.userId);
             localStorage.setItem("user_id", siweResponse.data.userId); // Stocker dans les deux formats
-            console.log("ID utilisateur stocké:", siweResponse.data.userId);
+            // console.log("ID utilisateur stocké:", siweResponse.data.userId);
           } else {
             console.error("Aucun userId reçu du serveur!");
           }
@@ -257,8 +257,8 @@ export const WalletAuthBlock = () => {
         // Stocker les détails d'authentification
         localStorage.setItem("isAuthenticated", "true");
 
-        console.log('The username is', verificationResult.username);
-        console.log('The wallet is', verificationResult.walletAddress);
+        // console.log('The username is', verificationResult.username);
+        // console.log('The wallet is', verificationResult.walletAddress);
         
         if (verificationResult.walletAddress) {
           localStorage.setItem("walletAddress", verificationResult.walletAddress);
@@ -273,13 +273,13 @@ export const WalletAuthBlock = () => {
         // IMPORTANT: Stocker le token JWT reçu du serveur
         if (siweResponse.data.token) {
           localStorage.setItem("token", siweResponse.data.token);
-          console.log("Token JWT stocké:", siweResponse.data.token.substring(0, 15) + "...");
+          // console.log("Token JWT stocké:", siweResponse.data.token.substring(0, 15) + "...");
         }
         
         // IMPORTANT: Stocker l'ID utilisateur si fourni
         if (siweResponse.data.userId) {
           localStorage.setItem("userId", siweResponse.data.userId);
-          console.log("ID utilisateur stocké:", siweResponse.data.userId);
+          // console.log("ID utilisateur stocké:", siweResponse.data.userId);
         }
         
         // Rediriger vers la page de recherche

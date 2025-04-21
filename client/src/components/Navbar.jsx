@@ -7,10 +7,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    console.log('[Navbar] Logging out...');
     try {
       await logout();
-      console.log('[Navbar] Logout successful, navigating to home.');
       navigate('/');
     } catch (error) {
       console.error('[Navbar] Logout failed:', error);
