@@ -394,29 +394,116 @@ export default function(passport) {
 
   // --- Routes Telegram (Login via Telegram Widget) ---
   router.get('/telegram', prepareSocialLink, (req, res) => {
-    
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
     const callbackBaseUrl = process.env.TELEGRAM_CALLBACK_URL;
     const qs = querystring.stringify(req.query);
-
-    console.log('the bot username',botUsername);
+  
+    console.log('the bot username', botUsername);
     const callbackUrl = qs ? `${callbackBaseUrl}?${qs}` : callbackBaseUrl;
+    
     res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Telegram Authentication</title>
-</head>
-<body>
-  <script async src="https://telegram.org/js/telegram-widget.js?15"
-    data-telegram-login="${botUsername}"
-    data-size="large"
-    data-userpic="false"
-    data-auth-url="${callbackUrl}"
-    data-request-access="write">
-  </script>
-</body>
-</html>`);
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login with Telegram</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+      
+      body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .auth-container {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 90%;
+        max-width: 480px;
+        text-align: center;
+        overflow: hidden;
+      }
+      
+      .logo {
+        width: 120px;
+        margin-bottom: 20px;
+      }
+      
+      h1 {
+        color: #333;
+        margin-bottom: 12px;
+        font-size: 1.8rem;
+      }
+      
+      p {
+        color: #666;
+        margin-bottom: 30px;
+        line-height: 1.5;
+      }
+      
+      .telegram-btn {
+        margin: 0 auto;
+        display: flex;
+        justify-content: center;
+      }
+      
+      .footer {
+        margin-top: 30px;
+        color: #999;
+        font-size: 0.8rem;
+      }
+      
+      .brand-colors {
+        height: 5px;
+        width: 100%;
+        background: linear-gradient(90deg, #0088cc, #31a9de);
+        margin-bottom: 30px;
+        border-radius: 3px;
+      }
+  
+      @media (max-width: 480px) {
+        .auth-container {
+          padding: 25px;
+          width: 95%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="auth-container">
+      <div class="brand-colors"></div>
+      <!-- Replace with your logo URL -->
+      <img src="/api/placeholder/120/120" alt="Logo" class="logo">
+      <h1>Login with Telegram</h1>
+      <p>Click the button below to sign in with your Telegram account. This method is simple, fast, and secure.</p>
+      
+      <div class="telegram-btn">
+        <script async src="https://telegram.org/js/telegram-widget.js?15"
+          data-telegram-login="${botUsername}"
+          data-size="large"
+          data-userpic="true"
+          data-auth-url="${callbackUrl}"
+          data-radius="8"
+          data-request-access="write">
+        </script>
+      </div>
+      
+      <div class="footer">
+        <p>By logging in, you agree to our terms of service and privacy policy.</p>
+      </div>
+    </div>
+  </body>
+  </html>`);
   });
 
   router.get('/telegram/callback', async (req, res) => {
