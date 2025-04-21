@@ -483,7 +483,7 @@ export default function(passport) {
     <div class="auth-container">
       <div class="brand-colors"></div>
       <!-- Replace with your logo URL -->
-      <img src="/UMAN_LOGO.png" alt="Logo" class="logo">
+      <img src="./UMAN_LOGO.png" alt="Logo" class="logo">
       <h1>Login with Telegram</h1>
       <p>Click the button below to sign in with your Telegram account. This method is simple, fast, and secure.</p>
       
