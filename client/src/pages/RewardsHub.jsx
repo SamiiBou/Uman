@@ -227,6 +227,11 @@ const RewardsHub = () => {
           // Set social verification state and profile image
           if (data.socialVerifications) {
             setSocialVerifications(data.socialVerifications);
+            console.log("Réseaux sociaux vérifiés:", data.socialVerifications);
+    // Log plus détaillé pour chaque réseau social
+    console.log("Twitter vérifié:", data.socialVerifications.twitter?.verified || false);
+    console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
+    console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
           }
           if (data.social?.twitter?.profileImageUrl) {
             setProfileImage(data.social.twitter.profileImageUrl);
