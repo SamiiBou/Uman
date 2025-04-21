@@ -531,7 +531,7 @@ const Home = () => {
                 {confirmedReferralCode ? (
                   <p>10 UMI welcome bonus + 20 UMI referral bonus</p>
                 ) : (
-                  <p>Welcome bonus for joining SocialID</p>
+                  <p>Welcome bonus for joining Uman</p>
                 )}
               </div>
               <div className="redirect-message">
