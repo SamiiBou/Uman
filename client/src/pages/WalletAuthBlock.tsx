@@ -129,10 +129,7 @@ export const WalletAuthBlock = () => {
       
       // *** IMPORTANT: Attendre que le wallet address soit disponible
       console.log("Auth successful, now waiting for MiniKit wallet address to be available");
-      const walletAddress = await getWalletAddress(5);
-      console.log("Wallet address after auth:", walletAddress);
-
-      const testResult = await MiniKit.commandsAsync.walletAuth({
+      const walletAdressePayLoad = await MiniKit.commandsAsync.walletAuth({
         nonce,
         requestId: "0",
         expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -140,7 +137,20 @@ export const WalletAuthBlock = () => {
         statement: "Sign in to SocialID - Connect with blockchain.",
       });
 
-      console.log("the test result is", testResult.finalPayload.address);
+      console.log("Auth successful, now waiting for MiniKit wallet address to be available");
+      const walletAddress = walletAdressePayLoad.finalPayload.address;
+      console.log("Wallet address after auth:", walletAddress);
+
+
+      // const testResult = await MiniKit.commandsAsync.walletAuth({
+      //   nonce,
+      //   requestId: "0",
+      //   expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      //   notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      //   statement: "Sign in to SocialID - Connect with blockchain.",
+      // });
+
+      // console.log("the test result is", testResult.finalPayload.address);
       
       // Maintenant récupérer le username MiniKit
       let minikitUsername = null;
