@@ -39,7 +39,7 @@ export const WalletAuthBlock = () => {
   }, []);
 
   // Fonction pour récupérer le wallet address avec retries
-  const getWalletAddress = async (maxRetries = 3) => {
+  const getWalletAddress = async (maxRetries = 5) => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -50,7 +50,7 @@ export const WalletAuthBlock = () => {
       
       console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
       // Attendre 500ms avant de réessayer
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1500));
       retries++;
     }
     

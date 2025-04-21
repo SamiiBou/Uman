@@ -37,7 +37,7 @@ const Home = () => {
   useEffect(() => {
     const initMiniKit = async () => {
       // Wait a bit to allow MiniKit to fully initialize
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       if (MiniKit.isInstalled()) {
         console.log("MiniKit is installed, checking status...");
@@ -77,7 +77,7 @@ const Home = () => {
     }, [location.search]);
 
   // Function to get wallet address with retries
-  const getWalletAddress = async (maxRetries = 3) => {
+  const getWalletAddress = async (maxRetries = 5) => {
     let retries = 0;
     
     while (retries < maxRetries) {
@@ -88,7 +88,7 @@ const Home = () => {
       
       console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
       // Wait 500ms before retrying
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1500));
       retries++;
     }
     
