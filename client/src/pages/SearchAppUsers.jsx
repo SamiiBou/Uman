@@ -147,7 +147,7 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        message: "Friend request sent! If accepted, you'll both receive 2 tokens!",
+        message: "Friend request sent! If accepted, you'll both receive 2 UMI!",
         type: 'success'
       });
       
@@ -178,7 +178,7 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        message: "Friend request accepted! You both received 2 tokens!",
+        message: "Friend request accepted! You both received 2 UMI!",
         type: 'success'
       });
       
@@ -461,7 +461,7 @@ const SearchAppUsers = () => {
           <p className="empty-text">Start connecting with other users and earn tokens!</p>
           <div className="token-reward-banner">
             <FaCoins className="token-icon" />
-            <p>For each friend you add, you both receive <strong>2 tokens</strong>!</p>
+            <p>For each friend you add, you both receive <strong>2 UMI</strong>!</p>
           </div>
           <button className="rewards-btn-primary" onClick={() => setActiveTab('discover')}>
             Discover People
@@ -471,7 +471,7 @@ const SearchAppUsers = () => {
         <>
           <div className="token-reward-banner">
             <FaCoins className="token-icon" />
-            <p>Add more friends and earn 2 tokens for each new connection!</p>
+            <p>Add more friends and earn 2 UMI for each new connection!</p>
             <button className="rewards-btn-primary add-friends-btn" onClick={() => setActiveTab('discover')}>
               Add Friends
             </button>
@@ -523,7 +523,7 @@ const SearchAppUsers = () => {
     <div className="requests-list">
       <div className="token-reward-banner">
         <FaCoins className="token-icon" />
-        <p>Accept friend requests and earn <strong>2 tokens</strong> for each new friend! You'll also see their social networks.</p>
+        <p>Accept friend requests and earn <strong>2 UMI</strong> for each new friend! You'll also see their social networks.</p>
       </div>
       
       {receivedRequests.length > 3 && (
@@ -563,7 +563,7 @@ const SearchAppUsers = () => {
             </div>
             <div className="request-actions">
               <button className="rewards-btn-primary" onClick={() => handleAcceptRequest(req.id)}>
-                Accept & Get 2 Tokens
+                Accept & Get 2 UMI
               </button>
               <button className="rewards-btn-outline" onClick={() => handleRejectRequest(req.id)}>
                 Decline
@@ -583,7 +583,7 @@ const SearchAppUsers = () => {
           <FaCoins className="large-token-icon" />
           <div className="banner-text">
             <h3>Earn Tokens with Friends!</h3>
-            <p>For each friend connection you create, you <strong>both receive 2 tokens</strong>. Plus, see their social networks!</p>
+            <p>For each friend connection you create, you <strong>both receive 2 UMI</strong>. Plus, see their social networks!</p>
           </div>
         </div>
       </div>
