@@ -394,9 +394,12 @@ export default function(passport) {
 
   // --- Routes Telegram (Login via Telegram Widget) ---
   router.get('/telegram', prepareSocialLink, (req, res) => {
+    
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
     const callbackBaseUrl = process.env.TELEGRAM_CALLBACK_URL;
     const qs = querystring.stringify(req.query);
+
+    console.log('the bot username',botUsername);
     const callbackUrl = qs ? `${callbackBaseUrl}?${qs}` : callbackBaseUrl;
     res.send(`<!DOCTYPE html>
 <html>
