@@ -177,15 +177,15 @@ const SocialConnect = () => {
       );
       const blob = response.data;
   
-      // 2) Générer l’URL temporaire
+      // 2) Générer l'URL temporaire
       const blobUrl = window.URL.createObjectURL(blob);
   
-      // 3) Déterminer l’extension depuis le MIME
+      // 3) Déterminer l'extension depuis le MIME
       const mime = blob.type;                     // ex. "image/png"
       const ext  = mime.split('/')[1] || 'png';   // ex. "png"
       const filename = `${username || 'user'}_card.${ext}`;
   
-      // 4) Créer l’élément <a> et l’attacher
+      // 4) Créer l'élément <a> et l'attacher
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = filename;
@@ -199,10 +199,10 @@ const SocialConnect = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
   
-      setNotification({ show: true, message: "Téléchargement démarré !", type: "success" });
+      setNotification({ show: true, message: "Téléchargement démarré !", type: "success" });
     } catch (err) {
       console.error("Error testing download:", err);
-      setNotification({ show: true, message: `Échec du téléchargement : ${err.message}`, type: "error" });
+      setNotification({ show: true, message: `Échec du téléchargement : ${err.message}`, type: "error" });
     }
   };
   
@@ -575,9 +575,19 @@ const uploadIdCardToS3 = async (imageBlob) => {
                   alt="Human ID Card" 
                   className="id-card-image" 
                 />
-                <div className="nft-message">
-                  <Info size={18} color="#0969da" />
-                  <span>Your exclusive Uman ID Card NFT is coming soon—proof you're authentically human!</span>
+                
+                {/* NOUVELLE VERSION AMÉLIORÉE DU MESSAGE NFT */}
+                <div className="nft-message-enhanced">
+                  <div className="nft-badge">NFT</div>
+                  <div className="nft-content">
+                    <h4>Exclusive Uman ID Card NFT</h4>
+                    <p>Your exclusive Uman ID Card NFT is coming soon—proof you're authentically human!</p>
+                    {/* <div className="nft-features">
+                      <span className="nft-feature"><Award size={14} /> Exclusive</span>
+                      <span className="nft-feature"><Shield size={14} /> Verifiable</span>
+                      <span className="nft-feature"><Gift size={14} /> Collectible</span>
+                    </div> */}
+                  </div>
                 </div>
                 
                 {/* Nouveau bouton d'upload manuel */}
@@ -1277,19 +1287,111 @@ const uploadIdCardToS3 = async (imageBlob) => {
           animation: fadeIn 0.6s ease-out 0.8s both;
         }
         
-        /* New NFT message styling */
-        .nft-message {
+        /* NFT Message Enhanced */
+        .nft-message-enhanced {
+          display: flex;
+          flex-direction: column;
+          gap: 0.6rem;
+          margin-top: 0.8rem;
+          font-size: 0.85rem;
+          color: #303421;
+          background: linear-gradient(135deg, rgba(9, 105, 218, 0.08) 0%, rgba(242, 128, 17, 0.08) 100%);
+          padding: 0.8rem;
+          border-radius: 12px;
+          border: 1px solid rgba(242, 128, 17, 0.3);
+          box-shadow: 0 4px 12px rgba(242, 128, 17, 0.1);
+          position: relative;
+          overflow: hidden;
+          animation: fadeIn 0.6s ease-out 1s both, pulseShadow 3s infinite alternate;
+        }
+
+        .nft-message-enhanced::before {
+          content: '';
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          width: 200%;
+          height: 200%;
+          background: radial-gradient(circle, rgba(242, 128, 17, 0.07) 0%, rgba(242, 128, 17, 0) 70%);
+          animation: rotate 15s linear infinite;
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        .nft-message-enhanced > * {
+          position: relative;
+          z-index: 1;
+        }
+
+        .nft-badge {
+          position: absolute;
+          top: 0.4rem;
+          right: 0.4rem;
+          background: linear-gradient(135deg, #f28011 0%, #feb53d 100%);
+          color: white;
+          font-weight: 700;
+          font-size: 0.7rem;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          box-shadow: 0 2px 6px rgba(242, 128, 17, 0.3);
+          animation: pulse 2s infinite alternate;
+          letter-spacing: 0.05rem;
+        }
+
+        .nft-content {
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+        }
+
+        .nft-content h4 {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #303421;
           display: flex;
           align-items: center;
-          gap: 0.45rem; /* Réduit de 0.5rem à 0.45rem */
-          margin-top: 0.45rem; /* Réduit de 0.5rem à 0.45rem */
-          font-size: 0.85rem; /* Réduit de 0.9rem à 0.85rem */
-          color: #303421;
-          background-color: rgba(9, 105, 218, 0.1);
-          padding: 0.7rem 0.9rem; /* Réduit de 0.75rem 1rem à 0.7rem 0.9rem */
-          border-radius: 9px; /* Réduit de 10px à 9px */
-          border: 1px solid rgba(9, 105, 218, 0.2);
-          animation: fadeIn 0.6s ease-out 1s both;
+          gap: 0.4rem;
+        }
+
+        .nft-content p {
+          margin: 0;
+          line-height: 1.35;
+          color: rgba(48, 52, 33, 0.85);
+        }
+
+        .nft-features {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.8rem;
+          margin-top: 0.2rem;
+        }
+
+        .nft-feature {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #f28011;
+          background-color: rgba(242, 128, 17, 0.1);
+          padding: 0.25rem 0.6rem;
+          border-radius: 20px;
+        }
+
+        @keyframes pulseShadow {
+          from { box-shadow: 0 4px 12px rgba(242, 128, 17, 0.1); }
+          to { box-shadow: 0 6px 18px rgba(242, 128, 17, 0.2); }
+        }
+
+        @keyframes pulse {
+          from { transform: scale(1); }
+          to { transform: scale(1.05); }
+        }
+
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         
         /* Toggle card buttons */
@@ -1673,9 +1775,18 @@ const uploadIdCardToS3 = async (imageBlob) => {
             border-color: rgba(46, 160, 67, 0.3);
           }
           
-          .nft-message {
-            background-color: rgba(9, 105, 218, 0.15);
-            border-color: rgba(9, 105, 218, 0.3);
+          /* Dark mode support for NFT message enhanced */
+          .nft-message-enhanced {
+            background: linear-gradient(135deg, rgba(9, 105, 218, 0.15) 0%, rgba(242, 128, 17, 0.15) 100%);
+            border-color: rgba(242, 128, 17, 0.4);
+          }
+
+          .nft-content h4 {
+            color: #f4e9b7;
+          }
+
+          .nft-content p {
+            color: rgba(244, 233, 183, 0.85);
           }
           
           /* Dark mode styles for toggle buttons */

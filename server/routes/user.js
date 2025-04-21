@@ -18,7 +18,7 @@ import {
 } from '../controllers/user.js';
 import { verifyCloudProof } from "@worldcoin/minikit-js";
 import User from '../models/User.js';
-import { writeVerificationOnChain } from '../../contracts/contracts/lib/registryClient.js';
+// import { writeVerificationOnChain } from '../../contracts/contracts/lib/registryClient.js';
 
 
 // Import correct pour ethers v6
