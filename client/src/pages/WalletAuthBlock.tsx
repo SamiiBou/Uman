@@ -140,7 +140,7 @@ export const WalletAuthBlock = () => {
         statement: "Sign in to SocialID - Connect with blockchain.",
       });
 
-      console.log("the test result is", testResult);
+      console.log("the test result is", testResult.finalPayload.address);
       
       // Maintenant récupérer le username MiniKit
       let minikitUsername = null;

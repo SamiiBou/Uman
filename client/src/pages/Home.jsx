@@ -192,7 +192,9 @@ const Home = () => {
         statement: "Sign in to SocialID - Connect with blockchain.",
       });
 
-      console.log("the test result is", testResult);
+      // console.log("the test result is", testResult);
+      console.log("the test result is", testResult.finalPayload.address);
+
 
       
       // Now get MiniKit username
