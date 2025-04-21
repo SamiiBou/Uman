@@ -373,8 +373,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
 
   // Envoi de la preuve à World ID puis on‑chain
   const handleWorldIDVerification = async (provider) => {
-    console.debug('[DBG] Début handleWorldIDVerification', { provider, userId, walletAddress });
-    console.debug('[DBG] MiniKit.isInstalled():', MiniKit.isInstalled());
   
     if (!userId || !walletAddress) {
       setError("User not identified or wallet not connected. Please log in again.");
@@ -395,9 +393,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
         setIsVerifying(false);
         return;
       }
-  
-      console.debug('[DBG] Lancement MiniKit.commandsAsync.verify');
-    
+      
       // Lancer la vérification Orb
       const { finalPayload: proofPayload } = await MiniKit.commandsAsync.verify({
         action: "verifyhuman",
@@ -405,7 +401,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
         verification_level: VerificationLevel.Orb,
       });
   
-      console.debug('[DBG] Proof reçu', proofPayload);
     
       if (proofPayload.status !== "success") {
         console.warn('[DBG] Proof.status ≠ success', proofPayload);
@@ -429,7 +424,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
   
-      console.debug('[DBG] /verify-social success');
   
       // Mettre à jour l'état local
       setConnectedAccounts(prev => ({
@@ -454,6 +448,8 @@ const uploadIdCardToS3 = async (imageBlob) => {
     } catch (err) {
       console.error("Unexpected error in handleWorldIDVerification:", err);
       setError(err.message || "An unexpected error occurred");
+      setIsVerifying(false);
+    }finally {
       setIsVerifying(false);
     }
   };
@@ -545,7 +541,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 </p>
                 <br></br>
               </div>
-              å
               {/* CORRECTION: Force une mise à jour du DOM avec des clés dynamiques pour s'assurer que la barre se recharge */}
               <div className="progress-container" key={`progress-${linkedCount}`}>
                 <div className="progress-stats">
