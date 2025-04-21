@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SocialID - Connect Your Social Media Accounts</title>
+    <!-- Google Fonts: Winky Rough -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Winky+Rough&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- SDK Facebook - doit être chargé tôt -->
+    <script>
+      // Fonction globale de debug pour identifier les problèmes de SDK
+      function fbDebug(msg) {
+        console.log("[FB DEBUG]", msg);
+      }
+
+      fbDebug("Script d'initialisation de FB lancé");
+
+      window.fbAsyncInit = function() {
+        fbDebug("fbAsyncInit exécuté");
+        FB.init({
+          appId      : '1033681041964361', // Votre App ID
+          cookie     : true,  // Active les cookies pour autoriser le serveur à accéder à la session
+          xfbml      : true,  // Analyse les plugins sociaux sur cette page
+          version    : 'v19.0' // Utilisez la dernière version stable de l'API Graph
+        });
+        
+        FB.AppEvents.logPageView();   // Optionnel: Log l'événement de vue de page
+        
+        // Forcer un parsing manuel XFBML pour s'assurer que les boutons sont rendus
+        // même si le SDK a des problèmes avec le parsing automatique
+        FB.XFBML.parse();
+        
+        fbDebug("SDK Facebook initialisé avec succès");
+        
+        // Diffuser un événement personnalisé que nos composants React peuvent écouter
+        const fbReadyEvent = new CustomEvent('fb-sdk-ready');
+        document.dispatchEvent(fbReadyEvent);
+      };
+    
+      // Charger le SDK de façon asynchrone
+      (function(d, s, id){
+         fbDebug("Début du chargement du SDK");
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {
+           fbDebug("SDK déjà chargé, ignorer");
+           return;
+         }
+         js = d.createElement(s); js.id = id;
+         // Ajouter le callback onerror pour détecter les problèmes de chargement
+         js.onerror = function() {
+           console.error("Erreur lors du chargement du SDK Facebook");
+         };
+         // Charger depuis le CDN Facebook
+         js.src = "https://connect.facebook.net/fr_FR/sdk.js";
+         fjs.parentNode.insertBefore(js, fjs);
+         fbDebug("SDK Facebook en cours de chargement");
+       }(document, 'script', 'facebook-jssdk'));
+    </script>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Eruda - Outil de débogage mobile -->
+    <script src="//cdn.jsdelivr.net/npm/eruda"></script>
+    <script>
+      // Initialisation d'Eruda - Console de débogage mobile
+      eruda.init();
+      console.log("Eruda initialisé avec succès");
+    </script>
+  </body>
+</html>

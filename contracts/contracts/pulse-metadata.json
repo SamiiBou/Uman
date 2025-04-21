@@ -1,0 +1,10 @@
+{
+  "name": "Pulse Token",
+  "symbol": "PULSE",
+  "decimals": 18,
+  "description": "Live and be rewarded",
+  "image": "https://ipfs.io/ipfs/bafkreidgqonfwdicpbe2rxfkejumxo33s6wl63bq6qigjdgc4xlvctcsfi",
+  "chainId": 480,
+  "maxSupply": "1000000000",
+  "website": "https://votre-site-web.com"
+}

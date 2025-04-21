@@ -1,0 +1,44 @@
+{
+  "name": "social-id-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.787.0",
+    "@aws-sdk/s3-request-presigner": "^3.787.0",
+    "@google-cloud/storage": "^7.16.0",
+    "@worldcoin/minikit-js": "^1.8.0",
+    "axios": "^1.8.4",
+    "cloudinary": "^2.6.0",
+    "connect-mongo": "^5.1.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "ethers": "^6.13.5",
+    "express": "^4.18.2",
+    "express-session": "^1.18.1",
+    "firebase": "^11.6.0",
+    "firebase-admin": "^13.2.0",
+    "framer-motion": "^12.6.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.1.1",
+    "multer": "^1.4.5-lts.2",
+    "node-fetch": "^3.3.2",
+    "oauth": "^0.9.15",
+    "passport": "^0.7.0",
+    "passport-discord": "^0.1.4",
+    "passport-facebook": "^3.0.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-instagram": "^1.0.0",
+    "passport-oauth2": "^1.8.0",
+    "passport-twitter": "^1.0.4",
+    "react-router-dom": "^7.4.1",
+    "siwe": "^3.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}
