@@ -17,7 +17,7 @@ export default defineConfig({
     allowedHosts: ['0e22b5b2d556.ngrok.app', '280c1e97fec6.ngrok.app', 'bb2b151abe3d.ngrok.app','64d5ebc818df.ngrok.app', '64d5ebc818df.ngrok.app','03a5f6ad56ec.ngrok.app' ], 
     proxy: {
       '/api': {
-        target: 'https://03a5f6ad56ec.ngrok.app',
+        target: 'https://uman.onrender.com',
         changeOrigin: true,
         secure: false,
         ws: true,

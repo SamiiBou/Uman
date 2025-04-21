@@ -22,6 +22,8 @@ const abi = [
 const DECIMALS = parseInt(process.env.TOKEN_DECIMALS, 10) || 18;
 
 // === CHANGEMENT ICI : instanciation pour ethers v6 ===
+console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
+
 const provider = rpcUrl ? new ethers.JsonRpcProvider(rpcUrl) : null;
 const wallet   = provider && privateKey ? new ethers.Wallet(privateKey, provider) : null;
 const tokenContract = wallet && tokenAddress

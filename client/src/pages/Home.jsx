@@ -6,7 +6,7 @@ import { MiniKit } from "@worldcoin/minikit-js";
 import head from './head.png';
 import UmiToken from './Umi_Token.png'; // Image du token UMI
 
-const BACKEND_URL = 'https://03a5f6ad56ec.ngrok.app';
+const BACKEND_URL = 'https://uman.onrender.com';
 const API_TIMEOUT = 15000;
 
 const Home = () => {

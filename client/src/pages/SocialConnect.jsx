@@ -22,7 +22,7 @@ const FaX = () => (
   </svg>
 );
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
 
 const SocialConnect = () => {
   const navigate = useNavigate();

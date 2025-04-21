@@ -3,7 +3,7 @@ import axios from 'axios'; // Assurez-vous qu'axios est configuré pour l'URL de
 
 // Configuration Axios de base (peut être mis dans un fichier séparé src/api/axiosConfig.js)
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api', // URL de votre API backend
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api', // URL de votre API backend
 });
 
 // Intercepteur pour ajouter le token JWT aux requêtes sortantes

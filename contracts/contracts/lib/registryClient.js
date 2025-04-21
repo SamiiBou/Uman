@@ -69,6 +69,9 @@ export async function writeVerificationOnChain({
   }
 
   // Connexion au réseau
+  console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
+
+  
   const provider = new ethers.JsonRpcProvider(RPC_URL);
   let network;
   try {

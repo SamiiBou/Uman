@@ -54,6 +54,8 @@ router.get('/token-balance/:walletAddress', async (req, res) => {
     
     // Utiliser un fournisseur public ou celui configuré dans vos variables d'environnement
     // Correction pour ethers v6
+    console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
+
     const provider = new JsonRpcProvider(
       process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/v2/vCq59BHgMYA2JIRKAbRPmIL8OaTeRAgu'
     );
