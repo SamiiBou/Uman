@@ -40,15 +40,15 @@ const Home = () => {
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       if (MiniKit.isInstalled()) {
-        // console.log("MiniKit is installed, checking status...");
-        // console.log("Initial MiniKit.walletAddress:", MiniKit.walletAddress);
+        console.log("MiniKit is installed, checking status...");
+        console.log("Initial MiniKit.walletAddress:", MiniKit.walletAddress);
         
         // Check if MiniKit is ready
         if (!MiniKit.walletAddress) {
-          // console.log("MiniKit not fully initialized yet, will check during auth flow");
+          console.log("MiniKit not fully initialized yet, will check during auth flow");
         }
       } else {
-        // console.log("MiniKit not installed");
+        console.log("MiniKit not installed");
       }
       
       setMiniKitInitialized(true);
@@ -71,7 +71,7 @@ const Home = () => {
       const params = new URLSearchParams(location.search);
       const ref = params.get('ref') || params.get('referralCode');
       if (ref) {
-        // console.log('Referral code detected in URL:', ref);
+        console.log('Referral code detected in URL:', ref);
         setReferralCode(ref);
       }
     }, [location.search]);
@@ -82,23 +82,23 @@ const Home = () => {
     
     while (retries < maxRetries) {
       if (MiniKit.walletAddress) {
-        // console.log("Found wallet address:", MiniKit.walletAddress);
+        console.log("Found wallet address:", MiniKit.walletAddress);
         return MiniKit.walletAddress;
       }
       
-      // console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
+      console.log(`Wallet address not found, retry ${retries + 1}/${maxRetries}`);
       // Wait 500ms before retrying
       await new Promise(resolve => setTimeout(resolve, 1500));
       retries++;
     }
     
-    // console.log("Could not obtain wallet address after retries");
+    console.log("Could not obtain wallet address after retries");
     return null;
   };
 
   // Wallet authentication function
   const handleWalletAuth = useCallback(async () => {
-    // console.log("=== Starting handleWalletAuth ===");
+    console.log("=== Starting handleWalletAuth ===");
     
     // Prevent multiple calls
     if (isLoading) {
@@ -118,7 +118,7 @@ const Home = () => {
     
     // Check if MiniKit is installed
     if (!MiniKit || !MiniKit.isInstalled()) {
-      // console.log("MiniKit not installed, using development mode");
+      console.log("MiniKit not installed, using development mode");
       
       // Simulate successful connection in development mode
       localStorage.setItem("isAuthenticated", "true");
@@ -181,7 +181,6 @@ const Home = () => {
       
       // Wait for wallet address to be available
    
-
       const walletAdressePayLoad = await MiniKit.commandsAsync.walletAuth({
         nonce,
         requestId: "0",
@@ -190,43 +189,40 @@ const Home = () => {
         statement: "Sign in to SocialID - Connect with blockchain.",
       });
 
-      // console.log("Auth successful, now waiting for MiniKit wallet address to be available");
+      console.log("Auth successful, now waiting for MiniKit wallet address to be available");
       const walletAddress = walletAdressePayLoad.finalPayload.address;
-      // console.log("Wallet address after auth:", walletAddress);
+      console.log("Wallet address after auth:", walletAddress);
 
-
-
-      
       // Now get MiniKit username
       let minikitUsername = null;
       
       if (walletAddress) {
         try {
-          // console.log("Attempting to fetch MiniKit username using getUserByAddress");
+          console.log("Attempting to fetch MiniKit username using getUserByAddress");
           const minikitUser = await MiniKit.getUserByAddress(walletAddress);
-          // console.log('The minikit user is', minikitUser);
+          console.log('The minikit user is', minikitUser);
           
           if (minikitUser && minikitUser.username) {
             minikitUsername = minikitUser.username;
-            // console.log("Successfully retrieved MiniKit username:", minikitUsername);
+            console.log("Successfully retrieved MiniKit username:", minikitUsername);
             
             // Store this username immediately
             localStorage.setItem('user_username', minikitUsername);
             localStorage.setItem('username', minikitUsername);
           } else {
-            // console.log("MiniKit returned user data but no username");
+            console.log("MiniKit returned user data but no username");
             
             // Fallbacks as in original in case of failure
             const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
             if (storedUsername) {
               minikitUsername = storedUsername;
-              // console.log("Using stored username from localStorage:", minikitUsername);
+              console.log("Using stored username from localStorage:", minikitUsername);
             } else {
               // Last resort: ask the user
               const promptedUsername = prompt("Please enter your preferred username:");
               if (promptedUsername && promptedUsername.trim()) {
                 minikitUsername = promptedUsername.trim();
-                // console.log("User provided username via prompt:", minikitUsername);
+                console.log("User provided username via prompt:", minikitUsername);
               }
             }
           }
@@ -237,25 +233,25 @@ const Home = () => {
           const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
           if (storedUsername) {
             minikitUsername = storedUsername;
-            // console.log("Using stored username from localStorage:", minikitUsername);
+            console.log("Using stored username from localStorage:", minikitUsername);
           } else {
             const promptedUsername = prompt("Please enter your preferred username:");
             if (promptedUsername && promptedUsername.trim()) {
               minikitUsername = promptedUsername.trim();
-              // console.log("User provided username via prompt:", minikitUsername);
+              console.log("User provided username via prompt:", minikitUsername);
             }
           }
         }
       }
       
-      // console.log("Final username to use:", minikitUsername);
+      console.log("Final username to use:", minikitUsername);
       
       // Get wallet address to use (from auth payload or MiniKit)
       const addrToUse = authPayload.address || walletAddress;
       
-      // console.log("Sending SIWE payload to backend with username:", minikitUsername);
-      // console.log("Using wallet address:", addrToUse);
-      // console.log("Referral code sent:", confirmedReferralCode);
+      console.log("Sending SIWE payload to backend with username:", minikitUsername);
+      console.log("Using wallet address:", addrToUse);
+      console.log("Referral code sent:", confirmedReferralCode);
         
       const siweResponse = await axios.post(
           `${BACKEND_URL}/api/auth/complete-siwe`,
@@ -286,7 +282,7 @@ const Home = () => {
         if (siweResponse.data.token) {
             localStorage.setItem("token", siweResponse.data.token);
             localStorage.setItem("auth_token", siweResponse.data.token);
-            // console.log("JWT token stored successfully");
+            console.log("JWT token stored successfully");
         } else {
             console.error("No token received from server!");
         }
@@ -294,7 +290,7 @@ const Home = () => {
         if (siweResponse.data.userId) {
             localStorage.setItem("userId", siweResponse.data.userId);
             localStorage.setItem("user_id", siweResponse.data.userId);
-            // console.log("User ID stored:", siweResponse.data.userId);
+            console.log("User ID stored:", siweResponse.data.userId);
         } else {
             console.error("No userId received from server!");
         }
@@ -302,8 +298,8 @@ const Home = () => {
         // Store authentication details
         localStorage.setItem("isAuthenticated", "true");
 
-        // console.log('The username is', verificationResult.username);
-        // console.log('The wallet is', verificationResult.walletAddress);
+        console.log('The username is', verificationResult.username);
+        console.log('The wallet is', verificationResult.walletAddress);
         
         if (verificationResult.walletAddress) {
           localStorage.setItem("walletAddress", verificationResult.walletAddress);
@@ -314,7 +310,7 @@ const Home = () => {
           localStorage.setItem("user_username", verificationResult.username);
         }
 
-        // console.log('Sending referralCode:', confirmedReferralCode);
+        console.log('Sending referralCode:', confirmedReferralCode);
 
         // Vérifier si l'utilisateur a déjà vu le message de bienvenue
         const hasSeenWelcome = localStorage.getItem("hasSeenWelcomeTokens");
@@ -405,18 +401,8 @@ const Home = () => {
             </div>
           )}
           
-          {/* Referral code field (optional) */}
-          <div 
-            className="referral-container" 
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              margin: '10px 0',
-              width: '100%',
-              maxWidth: '300px'
-            }}
-          >
+          {/* Referral code field (redesigned) */}
+          <div className="referral-container">
             <input
               type="text"
               placeholder="Referral Code (optional)"
@@ -426,13 +412,7 @@ const Home = () => {
                 setIsReferralValid(false);
                 setReferralError('');
               }}
-              style={{
-                flex: 1,
-                padding: '8px',
-                borderRadius: '4px',
-                border: '1px solid #ccc',
-                fontSize: '14px'
-              }}
+              className="referral-input"
             />
             <button
               type="button"
@@ -452,7 +432,7 @@ const Home = () => {
                     { referralCode: code },
                     { timeout: API_TIMEOUT, validateStatus: () => true }
                   );
-                  // console.log("Referral validation response:", resp.status, resp.data);
+                  console.log("Referral validation response:", resp.status, resp.data);
 
                 } catch (err) {
                   console.error('Referral validation error:', err);
@@ -472,25 +452,22 @@ const Home = () => {
                   setReferralError(resp.data.message || 'Invalid referral code');
                 }
               }}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '4px',
-                border: 'none',
-                backgroundColor: '#28a745',
-                color: 'white',
-                cursor: 'pointer'
-              }}
+              className="validate-button"
             >
               Validate
             </button>
           </div>
+          
           {isReferralValid && (
-            <div style={{ color: '#28a745', marginBottom: '8px' }}>
-              Code "{confirmedReferralCode}" confirmed 👍
+            <div className="referral-success">
+              <span className="success-icon">✓</span>
+              Code "{confirmedReferralCode}" confirmed
             </div>
           )}
+          
           {referralError && (
-            <div style={{ color: 'red', marginBottom: '8px' }}>
+            <div className="referral-error">
+              <span className="error-icon">!</span>
               {referralError}
             </div>
           )}
@@ -625,6 +602,129 @@ const Home = () => {
           flex-direction: column;
           align-items: center;
           padding-bottom: 40px;
+        }
+        
+        /* New referral container styles */
+        .referral-container {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 15px 0;
+          width: 100%;
+          max-width: 300px;
+          position: relative;
+          transition: all 0.3s ease;
+          animation: fadeIn 0.6s ease-out;
+        }
+        
+        .referral-input {
+          flex: 1;
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: 1px solid rgba(242, 128, 17, 0.3);
+          background-color: rgba(255, 255, 255, 0.5);
+          font-size: 14px;
+          color: #303421;
+          transition: all 0.3s ease;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .referral-input:focus {
+          outline: none;
+          border-color: #f28011;
+          box-shadow: 0 4px 8px rgba(242, 128, 17, 0.2);
+          transform: translateY(-1px);
+        }
+        
+        .referral-input::placeholder {
+          color: rgba(48, 52, 33, 0.6);
+        }
+        
+        .validate-button {
+          padding: 10px 14px;
+          border-radius: 10px;
+          background-color: transparent;
+          color: #f28011;
+          font-size: 14px;
+          font-weight: 500;
+          border: 1px solid #f28011;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          box-shadow: none;
+        }
+        
+        .validate-button:hover {
+          background-color: rgba(242, 128, 17, 0.1);
+          transform: translateY(-2px);
+        }
+        
+        .validate-button:active {
+          transform: translateY(0);
+        }
+        
+        .referral-success {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #2ea043;
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 12px;
+          padding: 8px 12px;
+          background-color: rgba(46, 160, 67, 0.1);
+          border-radius: 8px;
+          border: 1px solid rgba(46, 160, 67, 0.2);
+          animation: slideIn 0.3s ease-out;
+          max-width: 300px;
+        }
+        
+        .referral-error {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #f85149;
+          font-size: 14px;
+          font-weight: 500;
+          margin-bottom: 12px;
+          padding: 8px 12px;
+          background-color: rgba(248, 81, 73, 0.1);
+          border-radius: 8px;
+          border: 1px solid rgba(248, 81, 73, 0.2);
+          animation: slideIn 0.3s ease-out;
+          max-width: 300px;
+        }
+        
+        .success-icon, .error-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          font-size: 12px;
+          font-weight: bold;
+        }
+        
+        .success-icon {
+          background-color: rgba(46, 160, 67, 0.2);
+          color: #2ea043;
+        }
+        
+        .error-icon {
+          background-color: rgba(248, 81, 73, 0.2);
+          color: #f85149;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateX(-10px); }
+          to { opacity: 1; transform: translateX(0); }
         }
         
         .connect-area {
@@ -804,6 +904,28 @@ const Home = () => {
         @keyframes spin {
           to {
             transform: rotate(360deg);
+          }
+        }
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+          .referral-input {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(242, 128, 17, 0.4);
+            color: #ecd9b4;
+          }
+          
+          .referral-input::placeholder {
+            color: rgba(236, 217, 180, 0.6);
+          }
+          
+          .validate-button {
+            color: #f28011;
+            border-color: #f28011;
+          }
+          
+          .validate-button:hover {
+            background-color: rgba(242, 128, 17, 0.15);
           }
         }
         

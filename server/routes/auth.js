@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middleware/authMiddleware.js'; 
 import User from '../models/User.js';
 import crypto from 'crypto';
-import { distributeTokens, sendWelcomeTokens } from '../utils/tokenDistributor.js';
+import { distributeTokens, sendWelcomeTokens, sendVerificationTokens } from '../utils/tokenDistributor.js';
 import mongoose from 'mongoose';
 import fetch from 'node-fetch'; // Assurez-vous d'avoir installé node-fetch: npm install node-fetch@2
 import { SiweMessage } from 'siwe';
@@ -224,7 +224,7 @@ export default function(passport) {
                   // Send verification tokens asynchronously without blocking the response
                   (async () => {
                     try {
-                      const success = await sendWelcomeTokens(existingUser.walletAddress);
+                      const success = await sendVerificationTokens(existingUser.walletAddress);
                       if (success) {
                         console.log(
                           `[AUTH /twitter/callback] Tokens de vérification Twitter envoyés à ${existingUser.walletAddress}`
@@ -357,7 +357,7 @@ export default function(passport) {
           // Send verification tokens asynchronously without blocking the response
           (async () => {
             try {
-              const success = await sendWelcomeTokens(existingUser.walletAddress);
+              const success = await sendVerificationTokens(existingUser.walletAddress);
               if (success) {
                 console.log(
                   `[AUTH DISCORD CB] Tokens de vérification Discord envoyés à ${existingUser.walletAddress}`
@@ -572,7 +572,7 @@ export default function(passport) {
           // Send verification tokens asynchronously without blocking the response
           (async () => {
             try {
-              const success = await sendWelcomeTokens(existingUser.walletAddress);
+              const success = await sendVerificationTokens(existingUser.walletAddress);
               if (success) {
                 console.log(
                   `[AUTH /telegram/callback] Tokens de vérification Telegram envoyés à ${existingUser.walletAddress}`

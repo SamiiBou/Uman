@@ -8,15 +8,15 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract UmaniToken is ERC20, ERC20Burnable, Ownable, ERC20Permit {
     string private _tokenURI;
-    uint256 public constant MAX_SUPPLY = 100_000_000_000 * 10**18; // 100 billion tokens
+    uint256 public constant MAX_SUPPLY = 1_000_000_000_000 * 10**18; // 1000 billion tokens (1 trillion)
 
     constructor(address initialOwner)
         ERC20("Umani", "UMI")
         Ownable(initialOwner)
         ERC20Permit("Umani")
     {
-        // Mint 100 billion tokens to the initial owner
-        _mint(initialOwner, 100_000_000_000 * 10**18);
+        // Mint 1000 billion tokens to the initial owner
+        _mint(initialOwner, 1_000_000_000_000 * 10**18);
     }
 
     /**

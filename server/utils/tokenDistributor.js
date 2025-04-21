@@ -89,3 +89,14 @@ export async function sendWelcomeTokens(toAddress) {
     return false;
   }
 }
+
+export async function sendVerificationTokens(toAddress) {
+  try {
+    const tx = await distributeTokens(toAddress, '100.0');
+    console.log(`[Token Distributor] 10 welcome tokens sent to ${toAddress}. TxHash: ${tx.hash}`);
+    return true;
+  } catch (error) {
+    console.error('[Token Distributor] Error sending welcome tokens:', error);
+    return false;
+  }
+}
