@@ -137,20 +137,34 @@ const SocialConnect = () => {
 
   // MODIFICATION 2: Modified useEffect to avoid regenerating if S3 key exists
   useEffect(() => {
-    const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
-    if (linkedCount === 3) {
-      setShowIdCard(true);
-      setIdCardVisible(false); // Keep card hidden until user clicks "Show ID Card"
-      
-      if (!idCardS3Key) {
-        // First time: generate image and upload
-        generateIdCardImage();
-      } else {
-        // Already uploaded: use the stored S3 URL
-        setIdCardImageUrl(s3CardUrl);
-      }
-    }
-  }, [connectedAccounts, idCardS3Key, s3CardUrl]);
+        const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
+        if (linkedCount === 3 && !idCardS3Key) {
+          setShowIdCard(true);
+          setIdCardVisible(false);
+    
+          // Fetch the latest user record to confirm all socials are saved
+          axios.get(`${API_BASE_URL}/auth/me`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          })
+          .then(({ data }) => {
+            // check that backend really has all three networks
+            const social = data.social || {};
+            if (social.twitter && social.telegram && social.discord) {
+              generateIdCardImage();
+            } else {
+              console.warn('Not all networks persisted yet, waiting...');
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching user after linking:', err);
+          });
+        } else if (linkedCount === 3 && idCardS3Key) {
+          // already uploaded: just set the URL
+          setShowIdCard(true);
+          setIdCardVisible(false);
+          setIdCardImageUrl(s3CardUrl);
+        }
+      }, [connectedAccounts, idCardS3Key, s3CardUrl, token]);
 
   // Toggle card visibility
   const toggleIdCardVisibility = () => {
@@ -531,7 +545,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 </p>
                 <br></br>
               </div>
-              
+              å
               {/* CORRECTION: Force une mise à jour du DOM avec des clés dynamiques pour s'assurer que la barre se recharge */}
               <div className="progress-container" key={`progress-${linkedCount}`}>
                 <div className="progress-stats">
