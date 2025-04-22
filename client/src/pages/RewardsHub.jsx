@@ -100,6 +100,10 @@ const RewardsHub = () => {
   
   const scrollContainerRef = useRef(null);
 
+  // Fonction pour ouvrir le groupe Telegram
+  const openTelegramGroup = () => {
+    window.open('https://t.me/+W3pxAJb4yNk5MWM0', '_blank');
+  };
 
   useEffect(() => {
     if (firstLoginOfDay && todaysReward !== null) {
@@ -548,6 +552,12 @@ const RewardsHub = () => {
                     </span>
                   )}
                 </div>
+              </div>
+              
+              {/* Nouveau: Bouton Telegram */}
+              <div className="telegram-link" onClick={openTelegramGroup}>
+                <FaTelegramPlane size={18} />
+                <span className="telegram-text">Join Us</span>
               </div>
             </div>
           </div>
@@ -1472,6 +1482,55 @@ const RewardsHub = () => {
           display: flex;
           align-items: center;
           gap: 0.3rem;
+        }
+        
+        /* Nouveau style pour le lien Telegram */
+        .telegram-link {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background-color: rgba(0, 136, 204, 0.08);
+          border: 1px solid rgba(0, 136, 204, 0.2);
+          color: #0088cc;
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+        }
+        
+        .telegram-link:hover {
+          background-color: rgba(0, 136, 204, 0.15);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .telegram-text {
+          font-size: 0.8rem;
+          line-height: 1;
+        }
+        
+        /* Dark mode support pour le bouton Telegram */
+        @media (prefers-color-scheme: dark) {
+          .telegram-link {
+            background-color: rgba(0, 136, 204, 0.15);
+            border-color: rgba(0, 136, 204, 0.3);
+          }
+          
+          .telegram-link:hover {
+            background-color: rgba(0, 136, 204, 0.25);
+          }
+        }
+        
+        /* Support responsive pour le bouton Telegram */
+        @media (max-width: 380px) {
+          .telegram-text {
+            display: none;
+          }
+          
+          .telegram-link {
+            padding: 0.25rem;
+          }
         }
       `}</style>
     </div>
