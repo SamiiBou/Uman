@@ -27,6 +27,7 @@ const SearchAppUsers = () => {
   const { isAuthenticated, user: currentUser } = useAuth();
   // Normalize current user ID for comparisons (Mongoose returns _id)
   const currentUserId = currentUser?._id || currentUser?.id;
+  const [friendsList, setFriendsList] = useState([]);
   
   // New state for enhanced profile
   const [umiBalance, setUmiBalance] = useState('0');
@@ -36,12 +37,52 @@ const SearchAppUsers = () => {
   const [notification, setNotification] = useState({ show: false, message: '', type: 'info' });
   const [justCopied, setJustCopied] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+  const [totalPages, setTotalPages] = useState(1);
+
+
+  const fetchUsers = async (page = 1, term = '') => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get('/users/search-app', {
+        params: {
+          query: term,
+          page,            // page number
+          limit: ITEMS_PER_PAGE // items per page
+        }
+      });
+      if (res.data.success) {
+        setUsers(res.data.users);
+        setTotalPages(res.data.pagination.pages);
+        setCurrentPage(res.data.pagination.page);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // À l'arrivée sur la page, ou quand searchTerm change, on charge la page 1
+  useEffect(() => {
+    fetchUsers(1, searchTerm);
+  }, [searchTerm]);
+  
+  // Fetch users when page changes
+  useEffect(() => {
+    fetchUsers(currentPage, searchTerm);
+  }, [currentPage]);
+
+
+
   // Load sent requests, received requests, and friends only if authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       setSentRequests(new Set());
       setFriends(new Set());
       setReceivedRequests([]);
+      setFriendsList([]);
       return;
     }
     const fetchConnections = async () => {
@@ -51,12 +92,14 @@ const SearchAppUsers = () => {
         setSentRequests(new Set(sent.map(u => u.id)));
         setReceivedRequests(received);
         setFriends(new Set(fr.map(u => u.id)));
+        setFriendsList(fr);
       } catch (err) {
         console.error('Error fetching connections:', err);
       }
     };
     fetchConnections();
   }, [isAuthenticated]);
+
 
   // Load inbox and sent messages for authenticated user
   useEffect(() => {
@@ -117,27 +160,6 @@ const SearchAppUsers = () => {
     setUnreadCounts(counts);
   }, [inbox]);
 
-  // Search for users
-  useEffect(() => {
-    setLoading(true);
-    const delay = setTimeout(async () => {
-      try {
-        const response = await apiClient.get('/users/search-app', {
-          params: { query: searchTerm }
-        });
-        if (response.data.success) {
-          setUsers(response.data.users);
-        } else {
-          console.error('API error:', response.data.message);
-        }
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      } finally {
-        setLoading(false);
-      }
-    }, 300); // throttle to 300ms as per specs
-    return () => clearTimeout(delay);
-  }, [searchTerm]);
 
   // Handle sending friend request
   const handleSendRequest = async (userId) => {
@@ -453,77 +475,80 @@ const SearchAppUsers = () => {
   };
 
   // Friends tab content - RewardsHub Style
-  const renderFriendsTab = () => (
+  // Render the Friends tab content
+const renderFriendsTab = () => {
+  return (
     <div className="friends-list">
-      {friends.size === 0 ? (
+      {/* Show empty state when there are no friends */}
+      {friendsList.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
             <User size={32} />
           </div>
           <h3 className="empty-title">No friends yet</h3>
           <p className="empty-text">Start connecting with other users!</p>
-          {/* Commenté
-          <div className="token-reward-banner">
-            <FaCoins className="token-icon" />
-            <p>For each friend you add, you both receive <strong>2 UMI</strong>!</p>
-          </div>
-          */}
-          <button className="rewards-btn-primary" onClick={() => setActiveTab('discover')}>
+          <button
+            className="rewards-btn-primary"
+            onClick={() => setActiveTab('discover')}
+          >
             Discover People
           </button>
         </div>
       ) : (
-        <>
-          {/* Commenté
-          <div className="token-reward-banner">
-            <FaCoins className="token-icon" />
-            <p>Add more friends and earn 2 UMI for each new connection!</p>
-            <button className="rewards-btn-primary add-friends-btn" onClick={() => setActiveTab('discover')}>
-              Add Friends
-            </button>
-          </div>
-          */}
-          {users
-            .filter(user => friends.has(user.id))
-            .map(user => (
-              <div key={user.id} className="friend-row" onClick={() => openFriendDetail(user)}>
-                <div className="friend-info">
-                  <div className="avatar-container">
-                    {user.avatar ? (
-                      <img src={user.avatar} alt={user.name} className="avatar" />
-                    ) : (
-                      <div className="avatar-placeholder">
-                        <User size={24} />
-                      </div>
-                    )}
-                    {user.online && <div className="online-indicator"></div>}
-                    {unreadCounts[user.id] > 0 && (
-                      <div className="unread-badge">{unreadCounts[user.id]}</div>
-                    )}
-                  </div>
-                  <div className="user-details">
-                    <div className="user-name">{user.name}</div>
-                    <div className="user-username">@{user.username}</div>
-                  </div>
+        // List all friends, filtered by the current search term
+        friendsList
+          .filter(user =>
+            user.name.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+          .map(user => (
+            <div
+              key={user.id}
+              className="friend-row"
+              onClick={() => openFriendDetail(user)}
+            >
+              <div className="friend-info">
+                <div className="avatar-container">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="avatar"
+                    />
+                  ) : (
+                    <div className="avatar-placeholder">
+                      <User size={24} />
+                    </div>
+                  )}
+                  {user.online && <div className="online-indicator" />}
+                  {unreadCounts[user.id] > 0 && (
+                    <div className="unread-badge">
+                      {unreadCounts[user.id]}
+                    </div>
+                  )}
                 </div>
-                <div className="action-buttons">
-                  <button 
-                    className="action-button message-button" 
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      openChat(user); 
-                    }}
-                    aria-label="Send message"
-                  >
-                    <MessageCircle size={18} />
-                  </button>
+                <div className="user-details">
+                  <div className="user-name">{user.name}</div>
+                  <div className="user-username">@{user.username}</div>
                 </div>
               </div>
-            ))}
-        </>
+              <div className="action-buttons">
+                <button
+                  className="action-button message-button"
+                  onClick={e => {
+                    e.stopPropagation();
+                    openChat(user);
+                  }}
+                  aria-label="Send message"
+                >
+                  <MessageCircle size={18} />
+                </button>
+              </div>
+            </div>
+          ))
       )}
     </div>
   );
+};
 
   // Requests tab content
   const renderRequestsTab = () => (
@@ -586,62 +611,39 @@ const SearchAppUsers = () => {
     </div>
   );
 
-  // Discover tab content
-  const renderDiscoverTab = () => (
+  // Render the Discover tab content with pagination
+const renderDiscoverTab = () => {
+  // Filter out current user and already connected users
+  const suggestions = users.filter(user =>
+    user.id !== currentUserId &&
+    !friends.has(user.id) &&
+    !sentRequests.has(user.id)
+  );
+
+  // Function to limit visible page numbers
+  const getVisiblePageNumbers = () => {
+    const maxVisiblePages = 5; // Maximum number of page buttons to show
+    let startPage = Math.max(currentPage - Math.floor(maxVisiblePages / 2), 1);
+    let endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
+    
+    // Adjust start if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(endPage - maxVisiblePages + 1, 1);
+    }
+    
+    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+  };
+
+  return (
     <div className="discover-section">
-      {/* Commenté
-      <div className="token-reward-banner primary">
-        <div className="banner-content">
-          <FaCoins className="large-token-icon" />
-          <div className="banner-text">
-            <h3>Earn Tokens with Friends!</h3>
-            <p>For each friend connection you create, you <strong>both receive 2 UMI</strong>. Plus, see their social networks!</p>
-          </div>
-        </div>
-      </div>
-      */}
-      
-      <h3 className="section-title">Suggested for you</h3>
-      <div className="suggested-scroll">
-        {users
-          .filter(user => user.id !== currentUserId && !friends.has(user.id) && !sentRequests.has(user.id))
-          .slice(0, 5)
-          .map(user => (
-            <div key={user.id} className="suggestion-card">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="avatar" />
-              ) : (
-                <div className="avatar-placeholder large">
-                  <User size={32} />
-                </div>
-              )}
-              <div className="suggestion-details">
-                <div className="user-name">{user.name}</div>
-                {user.verified && <div className="verified-icon"><FaCheckCircle /></div>}
-              </div>
-              {/* Commenté
-              <div className="token-indicator">
-                <FaCoins className="small-token-icon" /> +2
-              </div>
-              */}
-              <button 
-                className="rewards-btn-primary add-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSendRequest(user.id);
-                }}
-              >
-                Add
-              </button>
-            </div>
-          ))}
-      </div>
-      
       <h3 className="section-title">People you may know</h3>
+
+      {/* List of users for current page */}
       <div className="discover-feed">
-        {users
-          .filter(user => user.id !== currentUserId && !friends.has(user.id) && !sentRequests.has(user.id))
-          .map(user => (
+        {suggestions.length === 0 ? (
+          <p className="empty-text">No users found.</p>
+        ) : (
+          suggestions.map(user => (
             <div key={user.id} className="discover-row">
               <div className="user-info">
                 {user.avatar ? (
@@ -657,12 +659,7 @@ const SearchAppUsers = () => {
                 </div>
               </div>
               <div className="add-user-action">
-                {/* Commenté
-                <div className="token-indicator">
-                  <FaCoins className="small-token-icon" /> +2
-                </div>
-                */}
-                <button 
+                <button
                   className="rewards-btn-primary add-btn"
                   onClick={() => handleSendRequest(user.id)}
                 >
@@ -670,10 +667,48 @@ const SearchAppUsers = () => {
                 </button>
               </div>
             </div>
-          ))}
+          ))
+        )}
       </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          {/* Previous page button */}
+          <button
+            className="page-btn prev-btn"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Prev
+          </button>
+
+          {/* Reduced Page numbers */}
+          {getVisiblePageNumbers().map(page => (
+            <button
+              key={page}
+              className={`page-btn ${currentPage === page ? 'active' : ''}`}
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </button>
+          ))}
+
+          {/* Next page button */}
+          <button
+            className="page-btn next-btn"
+            onClick={() =>
+              setCurrentPage(prev => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
+};
 
   // Function to copy text to clipboard
   const copyToClipboard = (text) => {
@@ -853,24 +888,6 @@ const SearchAppUsers = () => {
                 </div>
                 
                 <div className="rewards-username">@{user.username}</div>
-                
-                {/* Action buttons */}
-                {/* <div className="profile-action-buttons"> */}
-                  {/* <button 
-                    className="profile-action-btn chat-btn" 
-                    onClick={() => { openChat(friendDetailUser); closeFriendDetail(); }}
-                    title="Chat"
-                  >
-                    <MessageCircle size={16} />
-                  </button>
-                  <button 
-                    className="profile-action-btn copy-btn"
-                    onClick={() => copyUsername(`@${user.username}`)}
-                    title="Copy username"
-                  >
-                    <Copy size={16} />
-                  </button> */}
-                {/* </div> */}
                 
                 {/* Social badges */}
                 <div className="rewards-social-badges">
@@ -2357,16 +2374,14 @@ const SearchAppUsers = () => {
         /* Button Styles from RewardsHub */
         .rewards-btn-primary {
           padding: 0.75rem 1.5rem;
-          // background: linear-gradient(to right, #f16403, #feb53d);
           background: rgba(0, 0, 0, 0.4);
-          color: #5865F2;
           border: none;
           border-radius: 12px;
           color: white;
           font-weight: 600;
           cursor: pointer;
           transition: transform 0.2s;
-          width: 20%;
+          width: auto;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -2485,6 +2500,55 @@ const SearchAppUsers = () => {
         
         .social-icon.linkedin {
           color: #0077B5;
+        }
+        
+        /* Styles pour la pagination */
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          margin-top: 1.5rem;
+          padding: 0.5rem 0;
+          flex-wrap: wrap;
+        }
+        
+        .page-btn {
+          min-width: 32px;
+          height: 32px;
+          border: none;
+          border-radius: 12px;
+          background-color: rgba(241, 100, 3, 0.1);
+          color: #303421;
+          font-weight: 500;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 0.5rem;
+        }
+        
+        .prev-btn, .next-btn {
+          padding: 0 0.75rem;
+        }
+        
+        .page-btn:hover {
+          background-color: rgba(241, 100, 3, 0.2);
+          transform: translateY(-2px);
+        }
+        
+        .page-btn.active {
+          background: rgba(0, 0, 0, 0.4);
+          color: white;
+          font-weight: 600;
+        }
+        
+        .page-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
         }
       `}</style>
     </div>

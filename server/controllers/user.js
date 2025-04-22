@@ -176,15 +176,30 @@ export const searchUsers = async (req, res) => {
  */
 export const searchAppUsers = async (req, res) => {
   try {
-    const { query = '' } = req.query;
-    // Search by username (case insensitive)
+    // Parse pagination parameters
+    const { query = '', page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 10;
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Build search query (case insensitive)
     const searchQuery = {
       username: { $regex: query, $options: 'i' }
     };
-    // Limit to 50 results for performance
+
+    // Count total matching documents
+    const total = await User.countDocuments(searchQuery);
+    const pages = Math.ceil(total / limitNumber);
+
+    // Fetch paginated user list
     const users = await User.find(searchQuery)
-      .select('username name social.twitter.profileImageUrl social.google.profileImageUrl social.facebook.profileImageUrl social.instagram.profileImageUrl')
-      .limit(50);
+      .select(
+        'username name social.twitter.profileImageUrl '
+        + 'social.google.profileImageUrl social.facebook.profileImageUrl '
+        + 'social.instagram.profileImageUrl'
+      )
+      .skip(skip)
+      .limit(limitNumber);
 
     // Format user data for the response
     const formattedUsers = users.map(user => ({
@@ -199,13 +214,18 @@ export const searchAppUsers = async (req, res) => {
         `https://api.dicebear.com/7.x/identicon/svg?seed=${user._id}`
     }));
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      users: formattedUsers
+      users: formattedUsers,
+      pagination: {
+        total,
+        page: pageNumber,
+        pages
+      }
     });
   } catch (error) {
     console.error('Error searching users by username:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'An error occurred while searching users by username'
     });
@@ -380,7 +400,6 @@ export const sendFriendRequest = async (req, res) => {
 /**
  * Accept a friend request sent by another user.
  */
-// controllers/user.js
 
 export const acceptFriendRequest = async (req, res) => {
   const toUserId = req.user.id;
@@ -451,6 +470,7 @@ export const acceptFriendRequest = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 /**
  * Reject a friend request sent by another user.
  */
