@@ -62,6 +62,26 @@ const SocialConnect = () => {
   const [s3CardUrl, setS3CardUrl] = useState(() => localStorage.getItem('s3CardUrl') || '');
   const [idCardS3Key, setIdCardS3Key] = useState(() => localStorage.getItem('idCardS3Key'));
 
+
+  useEffect(() => {
+    // si l'utilisateur a déjà un idCardS3Key et un token
+    if (idCardS3Key && token) {
+      setShowIdCard(true);
+      setIdCardVisible(false);
+      // interroger ton endpoint pour obtenir une URL fraîche
+      axios.get(`${API_BASE_URL}/s3/image/${encodeURIComponent(idCardS3Key)}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(({ data }) => {
+        setIdCardImageUrl(data.url);
+      })
+      .catch(err => {
+        console.error("Erreur récupération presigned URL :", err);
+      });
+    }
+  }, [idCardS3Key, token]);
+  
+
   // Périodiquement on check les tx en attente
   useEffect(() => {
     const checkInterval = setInterval(() => {
@@ -252,13 +272,13 @@ const uploadIdCardToS3 = async (imageBlob) => {
     
     // Si l'upload réussit, sauvegarder l'URL S3 et la clé
     if (response.data && response.data.url) {
-      setS3CardUrl(response.data.url);
+      // setS3CardUrl(response.data.url);
       setIdCardImageUrl(response.data.url);
       setIdCardS3Key(response.data.key);             
       
       // IMPORTANT: Stocker la clé S3 et l'URL dans localStorage
       localStorage.setItem('idCardS3Key', response.data.key);
-      localStorage.setItem('s3CardUrl', response.data.url);
+      // localStorage.setItem('s3CardUrl', response.data.url);
       // console.log("S3 key saved:", response.data.key);
       
       setNotification({
