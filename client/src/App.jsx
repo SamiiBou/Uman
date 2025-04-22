@@ -13,6 +13,7 @@ import Connections from './pages/Connections'
 import FriendMap from './pages/FriendMap'
 import BottomNavbar from './components/BottomNavbar'
 import RewardsHub from './pages/RewardsHub'
+import TelegramButton from './TelegramButton'
 
 // Modifié pour toujours laisser passer l'utilisateur
 function ProtectedRoute({ children }) {
@@ -39,8 +40,42 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
+        <TelegramButton />
         <BottomNavbar />
       </div>
+
+      {/* Global styles for the TelegramButton */}
+      <style jsx global>{`
+        .telegram-float-btn {
+          position: fixed;
+          bottom: 80px; /* Position above the bottom navbar */
+          right: 20px;
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background-color: #0088cc;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 100;
+          transition: all 0.3s;
+          text-decoration: none;
+        }
+        
+        .telegram-float-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (prefers-color-scheme: dark) {
+          .telegram-float-btn {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          }
+        }
+      `}</style>
     </Router>
   )
 }
