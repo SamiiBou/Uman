@@ -866,17 +866,21 @@ export default function(passport) {
   // --- Route pour récupérer les données utilisateur via JWT --- (Protégée)
   router.get('/me', authenticateToken, async (req, res) => {
     if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: 'ID utilisateur non trouvé dans le token' });
+      return res.status(401).json({ message: 'ID utilisateur non trouvé dans le token' });
     }
     try {
       console.log(`[API /me] Recherche de l'utilisateur ID: ${req.user.id}`);
       const user = await User.findById(req.user.id)
-                         .select('-social.twitter.token -social.twitter.tokenSecret'); 
-
+                       .select('-social.twitter.token -social.twitter.tokenSecret');
+  
       if (!user) {
         console.log(`[API /me] Utilisateur non trouvé pour l'ID: ${req.user.id}`);
         return res.status(404).json({ message: 'Utilisateur non trouvé' });
       }
+      
+      // Add this log to see what social verifications are being sent
+      console.log(`[API /me] Social Verifications:`, JSON.stringify(user.socialVerifications, null, 2));
+      
       console.log(`[API /me] Utilisateur trouvé: ${user.name}, renvoi des données.`);
       res.json(user);
     } catch (err) {
