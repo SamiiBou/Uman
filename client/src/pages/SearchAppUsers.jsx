@@ -147,7 +147,8 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        message: "Friend request sent! If accepted, you'll both receive 2 UMI!",
+        // message: "Friend request sent! If accepted, you'll both receive 2 UMI!", // Commenté
+        message: "Friend request sent!",
         type: 'success'
       });
       
@@ -178,7 +179,8 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        message: "Friend request accepted! You both received 2 UMI!",
+        // message: "Friend request accepted! You both received 2 UMI!", // Commenté
+        message: "Friend request accepted!",
         type: 'success'
       });
       
@@ -243,7 +245,8 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        message: `All friend requests accepted! You received ${receivedRequests.length * 2} tokens!`,
+        // message: `All friend requests accepted! You received ${receivedRequests.length * 2} tokens!`, // Commenté
+        message: `All friend requests accepted!`,
         type: 'success'
       });
       
@@ -458,17 +461,20 @@ const SearchAppUsers = () => {
             <User size={32} />
           </div>
           <h3 className="empty-title">No friends yet</h3>
-          <p className="empty-text">Start connecting with other users and earn tokens!</p>
+          <p className="empty-text">Start connecting with other users!</p>
+          {/* Commenté
           <div className="token-reward-banner">
             <FaCoins className="token-icon" />
             <p>For each friend you add, you both receive <strong>2 UMI</strong>!</p>
           </div>
+          */}
           <button className="rewards-btn-primary" onClick={() => setActiveTab('discover')}>
             Discover People
           </button>
         </div>
       ) : (
         <>
+          {/* Commenté
           <div className="token-reward-banner">
             <FaCoins className="token-icon" />
             <p>Add more friends and earn 2 UMI for each new connection!</p>
@@ -476,6 +482,7 @@ const SearchAppUsers = () => {
               Add Friends
             </button>
           </div>
+          */}
           {users
             .filter(user => friends.has(user.id))
             .map(user => (
@@ -521,15 +528,18 @@ const SearchAppUsers = () => {
   // Requests tab content
   const renderRequestsTab = () => (
     <div className="requests-list">
+      {/* Commenté
       <div className="token-reward-banner">
         <FaCoins className="token-icon" />
         <p>Accept friend requests and earn <strong>2 UMI</strong> for each new friend! You'll also see their social networks.</p>
       </div>
+      */}
       
       {receivedRequests.length > 3 && (
         <div className="bulk-action">
           <button className="rewards-btn-primary" onClick={handleAcceptAll}>
-            Accept all and earn {receivedRequests.length * 2} tokens!
+            {/* Accept all and earn {receivedRequests.length * 2} tokens! */}
+            Accept all friend requests
           </button>
         </div>
       )}
@@ -563,7 +573,8 @@ const SearchAppUsers = () => {
             </div>
             <div className="request-actions">
               <button className="rewards-btn-primary" onClick={() => handleAcceptRequest(req.id)}>
-                Accept & Get 2 UMI
+                {/* Accept & Get 2 UMI */}
+                Accept
               </button>
               <button className="rewards-btn-outline" onClick={() => handleRejectRequest(req.id)}>
                 Decline
@@ -578,6 +589,7 @@ const SearchAppUsers = () => {
   // Discover tab content
   const renderDiscoverTab = () => (
     <div className="discover-section">
+      {/* Commenté
       <div className="token-reward-banner primary">
         <div className="banner-content">
           <FaCoins className="large-token-icon" />
@@ -587,6 +599,7 @@ const SearchAppUsers = () => {
           </div>
         </div>
       </div>
+      */}
       
       <h3 className="section-title">Suggested for you</h3>
       <div className="suggested-scroll">
@@ -606,9 +619,11 @@ const SearchAppUsers = () => {
                 <div className="user-name">{user.name}</div>
                 {user.verified && <div className="verified-icon"><FaCheckCircle /></div>}
               </div>
+              {/* Commenté
               <div className="token-indicator">
                 <FaCoins className="small-token-icon" /> +2
               </div>
+              */}
               <button 
                 className="rewards-btn-primary add-btn"
                 onClick={(e) => {
@@ -642,9 +657,11 @@ const SearchAppUsers = () => {
                 </div>
               </div>
               <div className="add-user-action">
+                {/* Commenté
                 <div className="token-indicator">
                   <FaCoins className="small-token-icon" /> +2
                 </div>
+                */}
                 <button 
                   className="rewards-btn-primary add-btn"
                   onClick={() => handleSendRequest(user.id)}

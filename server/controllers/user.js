@@ -412,6 +412,7 @@ export const acceptFriendRequest = async (req, res) => {
       record = new FriendshipReward({ user1: u1, user2: u2 });
     }
 
+    /* Commenté - Distribution de tokens désactivée
     if (!record.rewarded) {
       try {
         // only if both have walletAddress
@@ -429,8 +430,9 @@ export const acceptFriendRequest = async (req, res) => {
         // ne pas bloquer l'acceptation d'ami
       }
     }
+    */
 
-    // 4. Procéder à l’ajout en amis (existant)
+    // 4. Procéder à l'ajout en amis (existant)
     if (!toUser.friends.includes(fromUserId)) {
       toUser.friends.push(fromUserId);
     }
@@ -449,7 +451,6 @@ export const acceptFriendRequest = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 /**
  * Reject a friend request sent by another user.
  */

@@ -15,6 +15,9 @@ import createAuthRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import messageRoutes from './routes/message.js';
 
+import { createVoucher } from "./voucher.js";
+
+
 // Import des modèles
 import User from './models/User.js';
 
@@ -165,7 +168,13 @@ app.use((err, req, res, next) => {
      });
 });
 
-;
+router.post("/request-airdrop", authenticateToken, async (req, res) => {
+    const { amount } = req.body;
+    const { walletAddress } = req.user;
+    // (ex. check KYC, pas déjà réclamé…)
+    const { voucher, signature } = await createVoucher(walletAddress, amount);
+    res.json({ voucher, signature });
+  });
 
 
 // Démarrer le serveur
