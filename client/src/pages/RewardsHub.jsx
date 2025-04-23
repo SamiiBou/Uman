@@ -714,6 +714,8 @@ const RewardsHub = () => {
           color: #303421;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
           position: relative;
+          padding: 1rem;
+          padding-bottom: 1rem;
         }
         
         .background {

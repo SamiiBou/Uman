@@ -2,11 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../context/AuthContext';
 import { FaSearch, FaEnvelope, FaCoins, FaPlus, FaArrowLeft, FaEllipsisH, FaTwitter, FaTelegramPlane, FaDiscord, FaInstagram, FaFacebook, FaYoutube, FaLinkedin, FaCheckCircle, FaTrophy, FaCalendarAlt, FaWallet, FaCopy, FaTrash } from 'react-icons/fa';
-import { ChevronLeft, User, UserCheck, Calendar, Award, Globe, Mail, MessageCircle, RefreshCw, Shield, Info, Copy, Check } from 'lucide-react';
+import { ChevronLeft, User, UserCheck, Calendar, Award, Globe, Mail, MessageCircle, RefreshCw, Shield, Info, Copy, Check, Plus } from 'lucide-react';
+
+// Composant FaX pour l'icône X (Twitter)
+const FaX = () => (
+  <svg 
+    width="1em" 
+    height="1em" 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    xmlns="http://www.w3.org/2000/svg"
+    style={{ marginTop: '1px' }}
+  >
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
 
 const SearchAppUsers = () => {
-  // Tab navigation state
-  const [activeTab, setActiveTab] = useState('friends'); // 'friends', 'requests', 'discover'
+  // Tab navigation state - Modified to set 'community' (formerly discover) as default
+  const [activeTab, setActiveTab] = useState('community');
   
   // Core state from original component
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,24 +50,33 @@ const SearchAppUsers = () => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'info' });
   const [justCopied, setJustCopied] = useState(false);
+  // Added state for human verification
+  const [isHumanVerified, setIsHumanVerified] = useState(false);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1); 
   const [totalPages, setTotalPages] = useState(1);
+  
+  // Verified Users (Community Tab) state
+  const [verifiedUsers, setVerifiedUsers] = useState([]);
+  const [loadingVerified, setLoadingVerified] = useState(false);
+  const [verifiedCurrentPage, setVerifiedCurrentPage] = useState(1);
+  const [verifiedTotalPages, setVerifiedTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
-
+  // Fetch general users if needed
   const fetchUsers = async (page = 1, term = '') => {
     setLoading(true);
     try {
       const res = await apiClient.get('/users/search-app', {
         params: {
           query: term,
-          page,            // page number
-          limit: ITEMS_PER_PAGE // items per page
+          page,
+          limit: ITEMS_PER_PAGE
         }
       });
       if (res.data.success) {
-        setUsers(res.data.users);
+        setUsers(res.data.users); 
         setTotalPages(res.data.pagination.pages);
         setCurrentPage(res.data.pagination.page);
       }
@@ -63,20 +86,59 @@ const SearchAppUsers = () => {
       setLoading(false);
     }
   };
-
-  // À l'arrivée sur la page, ou quand searchTerm change, on charge la page 1
-  useEffect(() => {
-    fetchUsers(1, searchTerm);
-  }, [searchTerm]);
   
-  // Fetch users when page changes
+  // Fetch Verified Users for Community Tab
+  const fetchVerifiedUsers = async (page = 1, term = '') => {
+    setLoadingVerified(true);
+    try {
+      const res = await apiClient.get('/users/verified', {
+        params: {
+          query: term,
+          page,
+          limit: ITEMS_PER_PAGE
+        }
+      });
+      if (res.data.success) {
+        setVerifiedUsers(res.data.users);
+        setVerifiedTotalPages(res.data.pagination.pages);
+        setVerifiedCurrentPage(res.data.pagination.page);
+      }
+    } catch (err) {
+      console.error('Error fetching verified users:', err);
+      setVerifiedUsers([]);
+      setVerifiedTotalPages(1);
+      setVerifiedCurrentPage(1);
+    } finally {
+      setLoadingVerified(false);
+    }
+  };
+
+  // Handle search term changes for all tabs
   useEffect(() => {
-    fetchUsers(currentPage, searchTerm);
+    if (activeTab === 'community') {
+      fetchVerifiedUsers(1, searchTerm);
+      setVerifiedCurrentPage(1); // Reset to page 1 when search term changes
+    } else {
+      fetchUsers(1, searchTerm);
+      setCurrentPage(1); // Reset to page 1 when search term changes
+    }
+  }, [searchTerm, activeTab]);
+  
+  // Update data when page changes
+  useEffect(() => {
+    if (activeTab !== 'community') {
+      fetchUsers(currentPage, searchTerm);
+    }
   }, [currentPage]);
 
+  // Fetch verified users when community tab is active or its page changes
+  useEffect(() => {
+    if (activeTab === 'community') {
+      fetchVerifiedUsers(verifiedCurrentPage, searchTerm);
+    }
+  }, [verifiedCurrentPage]);
 
-
-  // Load sent requests, received requests, and friends only if authenticated
+  // Load user connections when authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       setSentRequests(new Set());
@@ -100,8 +162,7 @@ const SearchAppUsers = () => {
     fetchConnections();
   }, [isAuthenticated]);
 
-
-  // Load inbox and sent messages for authenticated user
+  // Load messages for authenticated user
   useEffect(() => {
     if (!isAuthenticated) {
       setInbox([]);
@@ -124,31 +185,41 @@ const SearchAppUsers = () => {
     fetchMessages();
   }, [isAuthenticated]);
 
-  // Compute unique conversation partners
+  // Compute conversations
   useEffect(() => {
     const map = {};
     inbox.forEach(msg => {
-      const u = {
-        id: msg.sender._id,
-        name: msg.sender.name || msg.sender.username,
-        username: msg.sender.username,
-        avatar: msg.sender.social?.twitter?.profileImageUrl
-      };
-      map[u.id] = u;
+      // Ensure sender exists
+      if (msg.sender) {
+        const u = {
+          id: msg.sender._id,
+          name: msg.sender.name || msg.sender.username,
+          username: msg.sender.username,
+          avatar: msg.sender.social?.twitter?.profileImageUrl
+        };
+        map[u.id] = u;
+      } else {
+        console.warn("Inbox message found without a sender:", msg);
+      }
     });
     sentMessages.forEach(msg => {
-      const u = {
-        id: msg.receiver._id,
-        name: msg.receiver.name || msg.receiver.username,
-        username: msg.receiver.username,
-        avatar: msg.receiver.social?.twitter?.profileImageUrl
-      };
-      map[u.id] = u;
+      // Check if msg.receiver exists before accessing its properties
+      if (msg.receiver) {
+        const u = {
+          id: msg.receiver._id,
+          name: msg.receiver.name || msg.receiver.username,
+          username: msg.receiver.username,
+          avatar: msg.receiver.social?.twitter?.profileImageUrl
+        };
+        if (!map[u.id]) map[u.id] = u;
+      } else {
+         console.warn("Sent message found without a receiver:", msg); // Optional: Log warning
+      }
     });
     setConversations(Object.values(map));
   }, [inbox, sentMessages]);
 
-  // Compute unread message counts per sender
+  // Compute unread counts
   useEffect(() => {
     const counts = {};
     inbox.forEach(msg => {
@@ -160,7 +231,6 @@ const SearchAppUsers = () => {
     setUnreadCounts(counts);
   }, [inbox]);
 
-
   // Handle sending friend request
   const handleSendRequest = async (userId) => {
     try {
@@ -169,7 +239,6 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        // message: "Friend request sent! If accepted, you'll both receive 2 UMI!", // Commenté
         message: "Friend request sent!",
         type: 'success'
       });
@@ -201,7 +270,6 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        // message: "Friend request accepted! You both received 2 UMI!", // Commenté
         message: "Friend request accepted!",
         type: 'success'
       });
@@ -267,7 +335,6 @@ const SearchAppUsers = () => {
       
       setNotification({
         show: true,
-        // message: `All friend requests accepted! You received ${receivedRequests.length * 2} tokens!`, // Commenté
         message: `All friend requests accepted!`,
         type: 'success'
       });
@@ -384,8 +451,15 @@ const SearchAppUsers = () => {
       const userDetails = await fetchUserDetails(user.id);
       if (userDetails) {
         setUserProfileDetails(userDetails);
+        // Check if user is human verified
+        if (userDetails.verified === true) {
+          setIsHumanVerified(true);
+        } else {
+          setIsHumanVerified(false);
+        }
       } else {
         setUserProfileDetails(null);
+        setIsHumanVerified(false);
       }
     } catch (error) {
       console.error('Error loading profile details:', error);
@@ -399,6 +473,7 @@ const SearchAppUsers = () => {
     setFriendDetailUser(null);
     setUserProfileDetails(null);
     setUmiBalance("0");
+    setIsHumanVerified(false);
   };
 
   // Format date in a readable way
@@ -474,241 +549,250 @@ const SearchAppUsers = () => {
     });
   };
 
-  // Friends tab content - RewardsHub Style
-  // Render the Friends tab content
-const renderFriendsTab = () => {
-  return (
-    <div className="friends-list">
-      {/* Show empty state when there are no friends */}
-      {friendsList.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <User size={32} />
-          </div>
-          <h3 className="empty-title">No friends yet</h3>
-          <p className="empty-text">Start connecting with other users!</p>
-          <button
-            className="rewards-btn-primary"
-            onClick={() => setActiveTab('discover')}
-          >
-            Discover People
-          </button>
-        </div>
-      ) : (
-        // List all friends, filtered by the current search term
-        friendsList
-          .filter(user =>
-            user.name.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          .map(user => (
-            <div
-              key={user.id}
-              className="friend-row"
-              onClick={() => openFriendDetail(user)}
-            >
-              <div className="friend-info">
-                <div className="avatar-container">
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="avatar"
-                    />
-                  ) : (
-                    <div className="avatar-placeholder">
-                      <User size={24} />
-                    </div>
-                  )}
-                  {user.online && <div className="online-indicator" />}
-                  {unreadCounts[user.id] > 0 && (
-                    <div className="unread-badge">
-                      {unreadCounts[user.id]}
-                    </div>
-                  )}
-                </div>
-                <div className="user-details">
-                  <div className="user-name">{user.name}</div>
-                  <div className="user-username">@{user.username}</div>
-                </div>
-              </div>
-              <div className="action-buttons">
-                <button
-                  className="action-button message-button"
-                  onClick={e => {
-                    e.stopPropagation();
-                    openChat(user);
-                  }}
-                  aria-label="Send message"
-                >
-                  <MessageCircle size={18} />
-                </button>
-              </div>
-            </div>
-          ))
-      )}
-    </div>
-  );
-};
-
-  // Requests tab content
-  const renderRequestsTab = () => (
-    <div className="requests-list">
-      {/* Commenté
-      <div className="token-reward-banner">
-        <FaCoins className="token-icon" />
-        <p>Accept friend requests and earn <strong>2 UMI</strong> for each new friend! You'll also see their social networks.</p>
-      </div>
-      */}
-      
-      {receivedRequests.length > 3 && (
-        <div className="bulk-action">
-          <button className="rewards-btn-primary" onClick={handleAcceptAll}>
-            {/* Accept all and earn {receivedRequests.length * 2} tokens! */}
-            Accept all friend requests
-          </button>
-        </div>
-      )}
-      
-      {receivedRequests.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            <Mail size={32} />
-          </div>
-          <h3 className="empty-title">No pending requests</h3>
-          <p className="empty-text">You don't have any friend requests right now</p>
-          <button className="rewards-btn-primary" onClick={() => setActiveTab('discover')}>
-            Discover People
-          </button>
-        </div>
-      ) : (
-        receivedRequests.map(req => (
-          <div key={req.id} className="request-card">
-            <div className="user-info">
-              {req.avatar ? (
-                <img src={req.avatar} alt={req.name} className="avatar" />
-              ) : (
-                <div className="avatar-placeholder">
-                  <User size={24} />
+  // Render the combined Connections tab (Friends + Requests)
+  const renderConnectionsTab = () => {
+    return (
+      <div className="connections-container">
+        {/* Friend Requests Section */}
+        {receivedRequests.length > 0 && (
+          <div className="requests-section">
+            <h3 className="section-title">Friend Requests</h3>
+            <div className="requests-list">
+              {receivedRequests.length > 3 && (
+                <div className="bulk-action">
+                  <button className="rewards-btn-primary" onClick={handleAcceptAll}>
+                    Accept all requests
+                  </button>
                 </div>
               )}
-              <div className="request-details">
-                <div className="user-name">{req.name}</div>
-                <div className="request-message">wants to add you</div>
-              </div>
-            </div>
-            <div className="request-actions">
-              <button className="rewards-btn-primary" onClick={() => handleAcceptRequest(req.id)}>
-                {/* Accept & Get 2 UMI */}
-                Accept
-              </button>
-              <button className="rewards-btn-outline" onClick={() => handleRejectRequest(req.id)}>
-                Decline
-              </button>
+              
+              {receivedRequests.map(req => (
+                <div key={req.id} className="request-card">
+                  <div className="user-info">
+                    {req.avatar ? (
+                      <img src={req.avatar} alt={req.name} className="avatar" />
+                    ) : (
+                      <div className="avatar-placeholder">
+                        <User size={24} />
+                      </div>
+                    )}
+                    <div className="request-details">
+                      <div className="user-name">{req.name}</div>
+                      <div className="request-message">wants to connect</div>
+                    </div>
+                  </div>
+                  <div className="request-actions">
+                    <button className="rewards-btn-primary request-btn" onClick={() => handleAcceptRequest(req.id)}>
+                      Accept
+                    </button>
+                    <button className="rewards-btn-outline request-btn" onClick={() => handleRejectRequest(req.id)}>
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))
-      )}
-    </div>
-  );
+        )}
 
-  // Render the Discover tab content with pagination
-const renderDiscoverTab = () => {
-  // Filter out current user and already connected users
-  const suggestions = users.filter(user =>
-    user.id !== currentUserId &&
-    !friends.has(user.id) &&
-    !sentRequests.has(user.id)
-  );
-
-  // Function to limit visible page numbers
-  const getVisiblePageNumbers = () => {
-    const maxVisiblePages = 5; // Maximum number of page buttons to show
-    let startPage = Math.max(currentPage - Math.floor(maxVisiblePages / 2), 1);
-    let endPage = Math.min(startPage + maxVisiblePages - 1, totalPages);
-    
-    // Adjust start if we're near the end
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(endPage - maxVisiblePages + 1, 1);
-    }
-    
-    return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-  };
-
-  return (
-    <div className="discover-section">
-      <h3 className="section-title">People you may know</h3>
-
-      {/* List of users for current page */}
-      <div className="discover-feed">
-        {suggestions.length === 0 ? (
-          <p className="empty-text">No users found.</p>
-        ) : (
-          suggestions.map(user => (
-            <div key={user.id} className="discover-row">
-              <div className="user-info">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.name} className="avatar" />
-                ) : (
-                  <div className="avatar-placeholder">
-                    <User size={24} />
-                  </div>
-                )}
-                <div className="user-details">
-                  <div className="user-name">{user.name}</div>
-                  <div className="user-username">@{user.username}</div>
+        {/* Friends List Section */}
+        <div className="friends-section">
+          <h3 className="section-title">Friends</h3>
+          <div className="friends-list">
+            {friendsList.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <User size={32} />
                 </div>
-              </div>
-              <div className="add-user-action">
+                <h3 className="empty-title">No friends yet</h3>
+                <p className="empty-text">Start connecting with other users!</p>
                 <button
-                  className="rewards-btn-primary add-btn"
-                  onClick={() => handleSendRequest(user.id)}
+                  className="rewards-btn-primary"
+                  onClick={() => setActiveTab('community')}
                 >
-                  Add
+                  Discover People
                 </button>
               </div>
+            ) : (
+              friendsList
+                .filter(user =>
+                  user.name.toLowerCase().includes(searchTerm.toLowerCase())
+                )
+                .map(user => (
+                  <div
+                    key={user.id}
+                    className="friend-row"
+                    onClick={() => openFriendDetail(user)}
+                  >
+                    <div className="friend-info">
+                      <div className="avatar-container">
+                        {user.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt={user.name}
+                            className="avatar"
+                          />
+                        ) : (
+                          <div className="avatar-placeholder">
+                            <User size={24} />
+                          </div>
+                        )}
+                        {user.online && <div className="online-indicator" />}
+                        {unreadCounts[user.id] > 0 && (
+                          <div className="unread-badge">
+                            {unreadCounts[user.id]}
+                          </div>
+                        )}
+                      </div>
+                      <div className="user-details">
+                        <div className="user-name">{user.name}</div>
+                        <div className="user-username">@{user.username}</div>
+                      </div>
+                    </div>
+                    <div className="action-buttons">
+                      <button
+                        className="action-button message-button"
+                        onClick={e => {
+                          e.stopPropagation();
+                          openChat(user);
+                        }}
+                        aria-label="Send message"
+                      >
+                        <MessageCircle size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render the Community tab (formerly Discover)
+  const renderCommunityTab = () => {
+    // Filter verified users to not show current user or friends
+    // Also apply local search filter for immediate feedback
+    const suggestions = verifiedUsers.filter(user => {
+      // Apply search term filter locally for better UX
+      const matchesSearch = searchTerm === '' || 
+        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+      return user.id !== currentUserId && matchesSearch;
+    });
+
+    // Helper function for pagination
+    const getVisiblePageNumbers = (current, total) => {
+      const maxVisiblePages = 5;
+      let startPage = Math.max(current - Math.floor(maxVisiblePages / 2), 1);
+      let endPage = Math.min(startPage + maxVisiblePages - 1, total);
+      
+      if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(endPage - maxVisiblePages + 1, 1);
+      }
+      
+      return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+    };
+
+    return (
+      <div className="community-section">
+        <h3 className="section-title">Verified Users</h3> 
+
+        {loadingVerified ? (
+           <div className="loading-indicator">Loading verified users...</div> 
+        ) : (
+          <>
+            <div className="community-feed">
+              {suggestions.length === 0 ? (
+                <p className="empty-text">No verified users found.</p>
+              ) : (
+                suggestions.map(user => (
+                  <div key={user.id} className="community-row" onClick={() => openFriendDetail(user)}>
+                    <div className="user-info">
+                      {user.avatar ? (
+                        <img src={user.avatar} alt={user.name || user.username} className="avatar" />
+                      ) : (
+                        <div className="avatar-placeholder">
+                          <User size={24} />
+                        </div>
+                      )}
+                      <div className="user-details">
+                        <div className="user-name-container">
+                          <span className="user-name">{user.name || user.username}</span>
+                          <div className="human-badge discover-human-badge" title="Human verified">
+                            <Shield size={14} />
+                            <span>Human</span>
+                          </div>
+                        </div>
+                        <div className="user-username">@{user.username}</div>
+                        <div className="social-icons-discover"> 
+                            {renderSocialNetworkBadges(user)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="add-user-action">
+                      {!friends.has(user.id) && !sentRequests.has(user.id) && (
+                        <button
+                          className="minimal-add-btn"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleSendRequest(user.id);
+                          }}
+                          aria-label="Send friend request"
+                        >
+                          <Plus size={18} />
+                        </button>
+                      )}
+                      {friends.has(user.id) && (
+                        <span className="already-friends-tag">Friend</span>
+                      )}
+                      {sentRequests.has(user.id) && !friends.has(user.id) && (
+                        <span className="request-sent-tag">Request Sent</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          ))
+
+            {verifiedTotalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="page-btn prev-btn"
+                  onClick={() => setVerifiedCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={verifiedCurrentPage === 1}
+                >
+                  Prev
+                </button>
+
+                {getVisiblePageNumbers(verifiedCurrentPage, verifiedTotalPages).map(page => (
+                  <button
+                    key={page}
+                    className={`page-btn ${verifiedCurrentPage === page ? 'active' : ''}`}
+                    onClick={() => setVerifiedCurrentPage(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  className="page-btn next-btn"
+                  onClick={() =>
+                    setVerifiedCurrentPage(prev => Math.min(prev + 1, verifiedTotalPages))
+                  }
+                  disabled={verifiedCurrentPage === verifiedTotalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
-
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div className="pagination">
-          {/* Previous page button */}
-          <button
-            className="page-btn prev-btn"
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Prev
-          </button>
-
-          {/* Reduced Page numbers */}
-          {getVisiblePageNumbers().map(page => (
-            <button
-              key={page}
-              className={`page-btn ${currentPage === page ? 'active' : ''}`}
-              onClick={() => setCurrentPage(page)}
-            >
-              {page}
-            </button>
-          ))}
-
-          {/* Next page button */}
-          <button
-            className="page-btn next-btn"
-            onClick={() =>
-              setCurrentPage(prev => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
+    );
+  };
 
   // Function to copy text to clipboard
   const copyToClipboard = (text) => {
@@ -740,94 +824,127 @@ const renderDiscoverTab = () => {
     });
   };
 
-  // Render social network icons with links - SIMPLIFIED VERSION
-  const renderSocialNetworks = (user) => {
+  // Render social network badges
+  const renderSocialNetworkBadges = (user) => {
     const social = user?.social || {};
-    const networks = [];
+    const badges = [];
+    
+    // Define priority order for social networks
+    const priorityOrder = {
+      twitter: 1,
+      discord: 2,
+      telegram: 3,
+      instagram: 4,
+      facebook: 5,
+      youtube: 6,
+      linkedin: 7
+    };
     
     if (social.twitter?.id) {
-      networks.push({
-        icon: <FaTwitter className="social-icon twitter" />,
-        username: social.twitter.username
-      });
-    }
-    
-    if (social.instagram?.id) {
-      networks.push({
-        icon: <FaInstagram className="social-icon instagram" />,
-        username: social.instagram.username
-      });
-    }
-    
-    if (social.discord?.id) {
-      networks.push({
-        icon: <FaDiscord className="social-icon discord" />,
-        username: social.discord.username
+      badges.push({
+        key: 'twitter',
+        icon: <FaX />,
+        username: social.twitter.username,
+        style: { backgroundColor: 'rgba(0,0,0,0.2)', color: 'black' }
       });
     }
     
     if (social.telegram?.id) {
-      networks.push({
-        icon: <FaTelegramPlane className="social-icon telegram" />,
-        username: social.telegram.username
+      badges.push({
+        key: 'telegram',
+        icon: <FaTelegramPlane />,
+        username: social.telegram.username,
+        style: { backgroundColor: 'rgba(0,136,255,0.2)', color: '#0088CC' }
+      });
+    }
+    
+    if (social.discord?.id) {
+      badges.push({
+        key: 'discord',
+        icon: <FaDiscord />,
+        username: social.discord.username,
+        style: { backgroundColor: 'rgba(88,101,242,0.2)', color: '#5865F2' }
+      });
+    }
+    
+    if (social.instagram?.id) {
+      badges.push({
+        key: 'instagram',
+        icon: <FaInstagram />,
+        username: social.instagram.username,
+        style: { backgroundColor: 'rgba(193,53,132,0.2)', color: '#C13584' }
       });
     }
     
     if (social.facebook?.id) {
-      networks.push({
-        icon: <FaFacebook className="social-icon facebook" />,
-        username: social.facebook.username || social.facebook.name
+      badges.push({
+        key: 'facebook',
+        icon: <FaFacebook />,
+        username: social.facebook.username || social.facebook.name,
+        style: { backgroundColor: 'rgba(66,103,178,0.2)', color: '#4267B2' }
       });
     }
     
     if (social.youtube?.id) {
-      networks.push({
-        icon: <FaYoutube className="social-icon youtube" />,
-        username: social.youtube.username
+      badges.push({
+        key: 'youtube',
+        icon: <FaYoutube />,
+        username: social.youtube.username,
+        style: { backgroundColor: 'rgba(255,0,0,0.2)', color: '#FF0000' }
       });
     }
     
     if (social.linkedin?.id) {
-      networks.push({
-        icon: <FaLinkedin className="social-icon linkedin" />,
-        username: social.linkedin.name
+      badges.push({
+        key: 'linkedin',
+        icon: <FaLinkedin />,
+        username: social.linkedin.name,
+        style: { backgroundColor: 'rgba(0,119,181,0.2)', color: '#0077B5' }
       });
     }
     
+    // Sort badges by priority order
+    badges.sort((a, b) => {
+      return priorityOrder[a.key] - priorityOrder[b.key];
+    });
+    
     return (
-      <div className="social-networks-section">
-        {networks.length === 0 ? (
-          <div className="no-socials">No connected social networks</div>
+      <div className="rewards-social-badges">
+        {badges.length === 0 ? (
+          <span className="no-socials-badge">No connected networks</span>
         ) : (
-          <>
-            <div className="social-networks-header">
-              <p>Connect with {user.name} on their social networks:</p>
-            </div>
-            <div className="social-list">
-              {networks.map((network, index) => (
-                <div key={index} className="social-network">
-                  <div className="social-icon-wrapper">
-                    {network.icon}
-                  </div>
-                  <div 
-                    className="social-username copyable"
-                    onClick={() => copyToClipboard(`@${network.username}`)}
-                  >
-                    @{network.username}
-                    <div className="copy-icon-wrapper">
-                      {justCopied ? <Check size={14} /> : <Copy size={14} />}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+          badges.map((badge, index) => (
+            <span 
+              key={index} 
+              className="rewards-social-badge"
+              style={badge.style}
+              onClick={() => copyToClipboard(`@${badge.username}`)}
+            >
+              {badge.icon} @{badge.username}
+            </span>
+          ))
         )}
       </div>
     );
   };
 
-  // Friend detail sheet (RewardsHub Style)
+  // Render social networks section
+  const renderSocialNetworks = (user) => {
+    if (!user) return null;
+    
+    return (
+      <div className="rewards-tab-section">
+        <div className="rewards-section-header">
+          <h3>Social Networks</h3>
+        </div>
+        <div className="rewards-section-content">
+          {renderSocialNetworkBadges(user)}
+        </div>
+      </div>
+    );
+  };
+
+  // Friend detail sheet
   const renderFriendDetail = () => {
     if (!friendDetailUser) return null;
     
@@ -847,7 +964,7 @@ const renderDiscoverTab = () => {
             </div>
           ) : (
             <div className="rewards-content-container">
-              {/* Back button (new) */}
+              {/* Back button */}
               <div className="profile-back-button" onClick={closeFriendDetail}>
                 <ChevronLeft size={20} />
               </div>
@@ -855,7 +972,7 @@ const renderDiscoverTab = () => {
               {/* Top Navigation */}
               <div className="rewards-top-nav">
                 <div className="rewards-nav-right">
-                  {/* Navigation options can be here */}
+                  {/* Navigation options */}
                 </div>
               </div>
               
@@ -880,7 +997,7 @@ const renderDiscoverTab = () => {
                   <h3 className="rewards-profile-username">{user.name}</h3>
                   
                   {isHumanVerified && (
-                    <div className="rewards-human-badge" title="Human verified">
+                    <div className="human-badge" title="Human verified">
                       <Shield size={14} />
                       <span>Human</span>
                     </div>
@@ -890,22 +1007,33 @@ const renderDiscoverTab = () => {
                 <div className="rewards-username">@{user.username}</div>
                 
                 {/* Social badges */}
-                <div className="rewards-social-badges">
-                  {user.social?.twitter?.verified && (
-                    <span className="rewards-social-badge twitter">
-                      <FaTwitter /> Twitter
-                    </span>
+                {renderSocialNetworkBadges(user)}
+                
+                {/* Action buttons */}
+                <div className="profile-action-buttons">
+                  {!friends.has(user.id) && !sentRequests.has(user.id) && (
+                    <button 
+                      className="profile-action-btn connect-btn"
+                      onClick={() => handleSendRequest(user.id)}
+                      aria-label="Connect"
+                    >
+                      <UserCheck size={18} />
+                    </button>
                   )}
-                  {user.social?.telegram?.verified && (
-                    <span className="rewards-social-badge telegram">
-                      <FaTelegramPlane /> Telegram
-                    </span>
-                  )}
-                  {user.social?.discord?.verified && (
-                    <span className="rewards-social-badge discord">
-                      <FaDiscord /> Discord
-                    </span>
-                  )}
+                  <button 
+                    className="profile-action-btn chat-btn"
+                    onClick={() => openChat(user)}
+                    aria-label="Chat"
+                  >
+                    <MessageCircle size={18} />
+                  </button>
+                  <button 
+                    className="profile-action-btn copy-btn"
+                    onClick={() => copyUsername(user.username)}
+                    aria-label="Copy username"
+                  >
+                    <Copy size={18} />
+                  </button>
                 </div>
               </div>
               
@@ -942,14 +1070,7 @@ const renderDiscoverTab = () => {
               </div>
               
               {/* SOCIAL NETWORKS */}
-              <div className="rewards-tab-section">
-                <div className="rewards-section-header">
-                  <h3>Social Networks</h3>
-                </div>
-                <div className="rewards-section-content">
-                  {renderSocialNetworks(user)}
-                </div>
-              </div>
+              {renderSocialNetworks(user)}
             </div>
           )}
         </div>
@@ -957,6 +1078,7 @@ const renderDiscoverTab = () => {
     );
   };
   
+  // Chat overlay
   const renderChatOverlay = () => {
     if (!selectedUser || !chatVisible) return null;
     
@@ -998,7 +1120,7 @@ const renderDiscoverTab = () => {
               </div>
             ))
           )}
-          {/* Ajout d'un espace en bas pour le clavier mobile */}
+          {/* Space for mobile keyboard */}
           <div style={{ height: '80px' }}></div>
         </div>
         
@@ -1024,12 +1146,12 @@ const renderDiscoverTab = () => {
       <div className="content-container" style={{ paddingTop: 0, marginTop: 0 }}>
         {/* Top Navigation */}
         <div className="rewards-top-nav">
-          <div className="page-title">Friends</div>
+          <div className="page-title">Social</div>
           <div className="search-container">
             <input
               type="text"
               className="search-input"
-              placeholder="Search friends..."
+              placeholder="Search users..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -1044,36 +1166,28 @@ const renderDiscoverTab = () => {
         {/* Tab Navigation */}
         <div className="tab-nav">
           <button 
-            className={`tab-button ${activeTab === 'friends' ? 'active' : ''}`}
-            onClick={() => setActiveTab('friends')}
+            className={`tab-button ${activeTab === 'community' ? 'active' : ''}`}
+            onClick={() => setActiveTab('community')}
           >
-            Friends
+            Community
           </button>
           <button 
-            className={`tab-button ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
+            className={`tab-button ${activeTab === 'connections' ? 'active' : ''}`}
+            onClick={() => setActiveTab('connections')}
           >
-            Requests
+            Connections
             {receivedRequests.length > 0 && <span className="tab-badge">{receivedRequests.length}</span>}
           </button>
-          <button 
-            className={`tab-button ${activeTab === 'discover' ? 'active' : ''}`}
-            onClick={() => setActiveTab('discover')}
-          >
-            Discover
-          </button>
           <div className="tab-indicator" style={{ 
-            left: activeTab === 'friends' ? '0%' : 
-                 activeTab === 'requests' ? '33.33%' : '66.66%',
-            width: '33.33%'
+            left: activeTab === 'community' ? '0%' : '50%',
+            width: '50%'
           }}></div>
         </div>
         
         {/* Tab Content */}
         <div className="tab-content">
-          {activeTab === 'friends' && renderFriendsTab()}
-          {activeTab === 'requests' && renderRequestsTab()}
-          {activeTab === 'discover' && renderDiscoverTab()}
+          {activeTab === 'community' && renderCommunityTab()}
+          {activeTab === 'connections' && renderConnectionsTab()}
         </div>
         
         {/* Friend Details */}
@@ -1091,7 +1205,7 @@ const renderDiscoverTab = () => {
       </div>
       
       <style jsx global>{`
-        /* CSS Reset complet */
+        /* CSS Reset */
         html, body, div, span, applet, object, iframe,
         h1, h2, h3, h4, h5, h6, p, blockquote, pre,
         a, abbr, acronym, address, big, cite, code,
@@ -1113,7 +1227,7 @@ const renderDiscoverTab = () => {
           vertical-align: baseline;
         }
         
-        /* HTML5 display-role reset for older browsers */
+        /* HTML5 display-role reset */
         article, aside, details, figcaption, figure, 
         footer, header, hgroup, menu, nav, section {
           display: block;
@@ -1304,97 +1418,6 @@ const renderDiscoverTab = () => {
           margin-left: 6px;
         }
         
-        /* Token Reward Banner */
-        .token-reward-banner {
-          display: flex;
-          align-items: center;
-          padding: 1rem;
-          margin-bottom: 1rem;
-          background-color: rgba(241, 100, 3, 0.1);
-          border: 1px solid rgba(241, 100, 3, 0.2);
-          border-radius: 12px;
-          position: relative;
-        }
-        
-        .token-reward-banner.primary {
-          background: linear-gradient(135deg, rgba(241, 100, 3, 0.2), rgba(241, 100, 3, 0.1));
-          border: 1px solid rgba(241, 100, 3, 0.3);
-          padding: 1.2rem;
-        }
-        
-        .banner-content {
-          display: flex;
-          align-items: center;
-          width: 100%;
-        }
-        
-        .banner-text {
-          flex: 1;
-        }
-        
-        .banner-text h3 {
-          font-weight: 600;
-          font-size: 1.1rem;
-          margin-bottom: 0.5rem;
-          color: #303421;
-        }
-        
-        .token-icon {
-          color: #f28011;
-          font-size: 1.2rem;
-          margin-right: 0.75rem;
-        }
-        
-        .large-token-icon {
-          color: #f28011;
-          font-size: 2rem;
-          margin-right: 1rem;
-        }
-        
-        .token-reward-banner p {
-          flex: 1;
-          margin: 0;
-          font-size: 0.9rem;
-          color: #303421;
-          line-height: 1.4;
-        }
-        
-        .token-reward-banner strong {
-          font-weight: 600;
-          color: #f16403;
-        }
-        
-        .add-friends-btn {
-          padding: 0.5rem 1rem;
-          font-size: 0.85rem;
-          margin-left: 1rem;
-          white-space: nowrap;
-        }
-        
-        /* Token indicators on user cards */
-        .token-indicator {
-          display: flex;
-          align-items: center;
-          padding: 0.25rem 0.5rem;
-          background-color: rgba(241, 100, 3, 0.1);
-          border-radius: 12px;
-          color: #f28011;
-          font-weight: 600;
-          font-size: 0.8rem;
-          margin-right: 0.5rem;
-          position: relative;
-        }
-        
-        .small-token-icon {
-          font-size: 0.85rem;
-          margin-right: 0.25rem;
-        }
-        
-        .add-user-action {
-          display: flex;
-          align-items: center;
-        }
-        
         /* Tab Content */
         .tab-content {
           min-height: 200px;
@@ -1402,7 +1425,127 @@ const renderDiscoverTab = () => {
           width: 100%;
         }
         
-        /* Friends Tab */
+        /* Section titles */
+        .section-title {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #303421;
+          margin-bottom: 1rem;
+        }
+        
+        /* Community Tab (formerly Discover) */
+        .community-section {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+        }
+        
+        .community-feed {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        
+        .community-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.75rem;
+          background-color: rgba(255, 255, 255, 0.5);
+          border-radius: 12px;
+          border: 1px solid rgba(241, 100, 3, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          transition: all 0.2s;
+          cursor: pointer;
+        }
+        
+        .community-row:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          border-color: rgba(241, 100, 3, 0.2);
+        }
+        
+        /* Minimize add button */
+        .minimal-add-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background-color: rgba(241, 100, 3, 0.1);
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #f28011;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        
+        .minimal-add-btn:hover {
+          background-color: rgba(241, 100, 3, 0.2);
+          transform: scale(1.05);
+        }
+        
+        /* Connections Tab (formerly Friends + Requests) */
+        .connections-container {
+          display: flex;
+          flex-direction: column;
+          gap: 2rem;
+        }
+        
+        .requests-section, .friends-section {
+          margin-bottom: 1rem;
+        }
+        
+        .requests-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        
+        .request-card {
+          padding: 1rem;
+          background-color: rgba(255, 255, 255, 0.5);
+          border-radius: 12px;
+          border: 1px solid rgba(241, 100, 3, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+        
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .request-details {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        
+        .request-message {
+          font-size: 0.8rem;
+          color: rgba(48, 52, 33, 0.7);
+        }
+        
+        .request-actions {
+          display: flex;
+          gap: 0.75rem;
+        }
+        
+        .request-btn {
+          padding: 0.5rem 1rem;
+          font-size: 0.85rem;
+        }
+        
+        .bulk-action {
+          margin-bottom: 1rem;
+        }
+        
+        /* Friends list */
         .friends-list {
           display: flex;
           flex-direction: column;
@@ -1507,6 +1650,13 @@ const renderDiscoverTab = () => {
           color: #303421;
         }
         
+        .user-name-container {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.2rem;
+        }
+        
         .user-username {
           font-size: 0.8rem;
           color: rgba(48, 52, 33, 0.7);
@@ -1570,145 +1720,153 @@ const renderDiscoverTab = () => {
           margin-bottom: 1.5rem;
         }
         
-        /* Requests Tab */
-        .requests-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-        
-        .bulk-action {
-          margin-bottom: 1rem;
-        }
-        
-        .micro-copy {
-          text-align: center;
-          font-size: 0.85rem;
-          color: rgba(48, 52, 33, 0.7);
-          font-style: italic;
-          margin-bottom: 1rem;
-        }
-        
-        .request-card {
-          padding: 1rem;
-          background-color: rgba(255, 255, 255, 0.5);
-          border-radius: 12px;
-          border: 1px solid rgba(241, 100, 3, 0.1);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        .user-info {
+        /* Human badge */
+        .human-badge {
           display: flex;
           align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1rem;
-        }
-        
-        .request-details {
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .request-message {
-          font-size: 0.8rem;
-          color: rgba(48, 52, 33, 0.7);
-        }
-        
-        .request-actions {
-          display: flex;
-          gap: 0.75rem;
-        }
-        
-        /* Discover Tab */
-        .discover-section {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-        
-        .section-title {
-          font-size: 1.1rem;
+          gap: 0.25rem;
+          padding: 0.25rem 0.5rem;
+          background-color: rgba(241, 100, 3, 0.15);
+          border: 1px solid rgba(241, 100, 3, 0.2);
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 600;
-          color: #303421;
-          margin-bottom: 0.75rem;
-        }
-        
-        .suggested-scroll {
-          display: flex;
-          overflow-x: auto;
-          gap: 0.75rem;
-          padding: 0.5rem 0;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-        }
-        
-        .suggested-scroll::-webkit-scrollbar {
-          display: none;
-        }
-        
-        .suggestion-card {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 1rem;
-          background-color: rgba(255, 255, 255, 0.5);
-          border-radius: 12px;
-          border: 1px solid rgba(241, 100, 3, 0.1);
-          min-width: 120px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          transition: all 0.2s;
-          position: relative;
-        }
-        
-        .suggestion-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        }
-        
-        .suggestion-details {
-          margin: 0.75rem 0;
-          text-align: center;
-          position: relative;
-        }
-        
-        .verified-icon {
-          position: absolute;
-          top: -8px;
-          right: -12px;
           color: #f28011;
-          font-size: 0.9rem;
+          animation: fadeIn 0.6s ease-out;
         }
         
-        .add-btn {
-          width: 100%;
-          padding: 0.5rem;
-          font-size: 0.85rem;
+        .human-badge span {
+          line-height: 1;
         }
         
-        .discover-feed {
+        .discover-human-badge {
+          font-size: 0.7rem;
+          padding: 0.2rem 0.4rem;
+          margin-left: 0.3rem;
+        }
+        
+        /* Social network badges */
+        .social-icons-discover {
+          margin-top: 0.5rem;
           display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
+          flex-wrap: wrap;
+          gap: 0.3rem;
         }
         
-        .discover-row {
+        .social-icons-discover .rewards-social-badges {
+          margin-top: 0;
+          justify-content: flex-start;
+        }
+        
+        .social-icons-discover .rewards-social-badge {
+          padding: 0.15rem 0.4rem;
+          font-size: 0.7rem;
+          white-space: nowrap;
+        }
+        
+        .rewards-social-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+          justify-content: center;
+        }
+        
+        .rewards-social-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem;
-          background-color: rgba(255, 255, 255, 0.5);
+          gap: 0.3rem;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        
+        .rewards-social-badge:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .no-socials-badge {
+          font-size: 0.8rem;
+          color: rgba(48, 52, 33, 0.6);
+          font-style: italic;
+        }
+        
+        /* Already friends & request sent tags */
+        .already-friends-tag, .request-sent-tag {
+          padding: 0.4rem 0.7rem;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          white-space: nowrap;
+        }
+        
+        .already-friends-tag {
+          background-color: rgba(46, 160, 67, 0.1);
+          color: #2ea043;
+        }
+        
+        .request-sent-tag {
+          background-color: rgba(9, 105, 218, 0.1);
+          color: #0969da;
+        }
+        
+        /* Pagination */
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          margin-top: 1.5rem;
+          padding: 0.5rem 0;
+          flex-wrap: wrap;
+        }
+        
+        .page-btn {
+          min-width: 32px;
+          height: 32px;
+          border: none;
           border-radius: 12px;
-          border: 1px solid rgba(241, 100, 3, 0.1);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-          transition: all 0.2s;
+          background-color: rgba(241, 100, 3, 0.1);
+          color: #303421;
+          font-weight: 500;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 0 0.5rem;
         }
         
-        .discover-row:hover {
+        .prev-btn, .next-btn {
+          padding: 0 0.75rem;
+        }
+        
+        .page-btn:hover {
+          background-color: rgba(241, 100, 3, 0.2);
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
         
-        /* Detail Sheet */
+        .page-btn.active {
+          background: rgba(0, 0, 0, 0.4);
+          color: white;
+          font-weight: 600;
+        }
+        
+        .page-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
+        }
+        
+        /* Friend detail sheet */
         .detail-sheet {
           position: fixed;
           bottom: 0;
@@ -1750,7 +1908,7 @@ const renderDiscoverTab = () => {
           padding-top: 24px;
         }
         
-        /* New back button style */
+        /* Profile back button */
         .profile-back-button {
           position: absolute;
           top: 20px;
@@ -1773,7 +1931,7 @@ const renderDiscoverTab = () => {
           transform: scale(1.05);
         }
         
-        /* Loading Profile */
+        /* Loading profile */
         .loading-profile {
           display: flex;
           flex-direction: column;
@@ -1796,7 +1954,7 @@ const renderDiscoverTab = () => {
           to { transform: rotate(360deg); }
         }
         
-        /* RewardsHub Style Components */
+        /* Profile container */
         .rewards-content-container {
           width: 100%;
           max-width: 450px;
@@ -1811,88 +1969,10 @@ const renderDiscoverTab = () => {
           margin-bottom: 1.5rem;
         }
         
-        .rewards-back-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background-color: rgba(241, 100, 3, 0.1);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .rewards-back-button:hover {
-          background-color: rgba(241, 100, 3, 0.2);
-        }
-        
         .rewards-nav-right {
           display: flex;
           align-items: center;
           gap: 10px;
-        }
-        
-        .rewards-balance-display {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background-color: rgba(241, 100, 3, 0.08);
-          border: 1px solid rgba(241, 100, 3, 0.15);
-          border-radius: 6px;
-          padding: 0.25rem 0.5rem;
-          transition: all 0.2s ease;
-        }
-        
-        .rewards-balance-display:hover {
-          background-color: rgba(241, 100, 3, 0.12);
-          transform: translateY(-1px);
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .rewards-balance-text {
-          display: flex;
-          flex-direction: column;
-          line-height: 1.1;
-          position: relative;
-        }
-        
-        .rewards-balance-label {
-          font-size: 0.65rem;
-          color: rgba(48, 52, 33, 0.7);
-          font-weight: 500;
-        }
-        
-        .rewards-balance-value {
-          font-size: 0.85rem;
-          font-weight: 600;
-          color: #303421;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        
-        .rewards-refresh-button {
-          background: none;
-          border: none;
-          color: #f28011;
-          cursor: pointer;
-          padding: 2px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s;
-          position: absolute;
-          right: -20px;
-          top: 50%;
-          transform: translateY(-50%);
-          opacity: 0.7;
-        }
-        
-        .rewards-refresh-button:hover {
-          opacity: 1;
-          background-color: rgba(241, 100, 3, 0.1);
         }
         
         .rewards-profile-container {
@@ -1904,7 +1984,7 @@ const renderDiscoverTab = () => {
           align-items: center;
           gap: 1rem;
           padding: 1rem 0;
-          padding-top: 2rem; /* Added extra padding for back button */
+          padding-top: 2rem;
         }
         
         .rewards-profile-header {
@@ -1912,24 +1992,6 @@ const renderDiscoverTab = () => {
           align-items: center;
           gap: 0.5rem;
           justify-content: center;
-        }
-        
-        .rewards-human-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.25rem 0.5rem;
-          background-color: rgba(241, 100, 3, 0.1);
-          border: 1px solid rgba(241, 100, 3, 0.2);
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #f28011;
-          animation: fadeIn 0.6s ease-out;
-        }
-        
-        .rewards-human-badge span {
-          line-height: 1;
         }
         
         .rewards-profile-image-container {
@@ -1989,6 +2051,7 @@ const renderDiscoverTab = () => {
           margin-top: -0.5rem;
         }
         
+        /* Profile action buttons */
         .profile-action-buttons {
           display: flex;
           gap: 12px;
@@ -2019,44 +2082,17 @@ const renderDiscoverTab = () => {
           color: #f28011;
         }
         
+        .profile-action-btn.connect-btn {
+          background-color: rgba(0, 0, 0, 0.4);
+          color: white;
+        }
+        
         .profile-action-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
-        .rewards-social-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
-          justify-content: center;
-        }
-        
-        .rewards-social-badge {
-          padding: 0.25rem 0.5rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        
-        .rewards-social-badge.twitter {
-          background-color: rgba(29,161,242,0.2);
-          color: #1DA1F2;
-        }
-        
-        .rewards-social-badge.telegram {
-          background-color: rgba(0,136,255,0.2);
-          color: #0088CC;
-        }
-        
-        .rewards-social-badge.discord {
-          background-color: rgba(88,101,242,0.2);
-          color: #5865F2;
-        }
-        
+        /* Stats cards */
         .rewards-streak-container {
           margin-bottom: 1.5rem;
           width: 100%;
@@ -2118,6 +2154,7 @@ const renderDiscoverTab = () => {
           font-weight: normal;
         }
         
+        /* Social networks tab */
         .rewards-tab-section {
           width: 100%;
           background: transparent;
@@ -2147,79 +2184,7 @@ const renderDiscoverTab = () => {
           padding: 1rem;
         }
         
-        /* Social Networks Section */
-        .social-networks-section {
-          margin: 10px 0;
-          width: 100%;
-        }
-        
-        .social-networks-header {
-          margin-bottom: 12px;
-          font-size: 0.9rem;
-          color: rgba(48, 52, 33, 0.8);
-        }
-        
-        .no-socials {
-          text-align: center;
-          padding: 16px;
-          color: rgba(48, 52, 33, 0.7);
-          font-style: italic;
-        }
-        
-        .social-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          width: 100%;
-        }
-        
-        .social-network {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          border-radius: 8px;
-          background-color: rgba(255, 255, 255, 0.5);
-          border: 1px solid rgba(48, 52, 33, 0.1);
-        }
-        
-        .social-icon-wrapper {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16px;
-        }
-        
-        .social-username {
-          font-size: 0.9rem;
-          color: #303421;
-          position: relative;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        
-        .social-username.copyable {
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        
-        .social-username.copyable:hover {
-          color: #f28011;
-        }
-        
-        .copy-icon-wrapper {
-          color: rgba(241, 100, 3, 0.6);
-          font-size: 0.6rem;
-          opacity: 0.7;
-          margin-left: 0.5rem;
-        }
-        
-        .social-username.copyable:hover .copy-icon-wrapper {
-          opacity: 1;
-        }
-        
-        /* Chat Overlay */
+        /* Chat overlay */
         .chat-overlay {
           position: fixed;
           top: 0;
@@ -2371,7 +2336,7 @@ const renderDiscoverTab = () => {
           cursor: pointer;
         }
         
-        /* Button Styles from RewardsHub */
+        /* Button styles */
         .rewards-btn-primary {
           padding: 0.75rem 1.5rem;
           background: rgba(0, 0, 0, 0.4);
@@ -2445,7 +2410,17 @@ const renderDiscoverTab = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Media queries pour différents appareils */
+        /* Loading indicator */
+        .loading-indicator {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 2rem;
+          color: rgba(48, 52, 33, 0.7);
+          font-style: italic;
+        }
+        
+        /* Mobile support */
         @media screen and (max-height: 750px) {
           .chat-input {
             position: fixed;
@@ -2462,7 +2437,7 @@ const renderDiscoverTab = () => {
           }
         }
         
-        /* Support pour iPhone avec notch */
+        /* Support for iPhone with notch */
         @supports (padding-bottom: env(safe-area-inset-bottom)) {
           .chat-input {
             padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
@@ -2471,84 +2446,6 @@ const renderDiscoverTab = () => {
           .chat-overlay {
             padding-bottom: env(safe-area-inset-bottom);
           }
-        }
-        
-        /* Icon styles for social networks */
-        .social-icon.twitter {
-          color: #1DA1F2;
-        }
-        
-        .social-icon.instagram {
-          color: #C13584;
-        }
-        
-        .social-icon.discord {
-          color: #5865F2;
-        }
-        
-        .social-icon.telegram {
-          color: #0088cc;
-        }
-        
-        .social-icon.facebook {
-          color: #4267B2;
-        }
-        
-        .social-icon.youtube {
-          color: #FF0000;
-        }
-        
-        .social-icon.linkedin {
-          color: #0077B5;
-        }
-        
-        /* Styles pour la pagination */
-        .pagination {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          gap: 8px;
-          margin-top: 1.5rem;
-          padding: 0.5rem 0;
-          flex-wrap: wrap;
-        }
-        
-        .page-btn {
-          min-width: 32px;
-          height: 32px;
-          border: none;
-          border-radius: 12px;
-          background-color: rgba(241, 100, 3, 0.1);
-          color: #303421;
-          font-weight: 500;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 0 0.5rem;
-        }
-        
-        .prev-btn, .next-btn {
-          padding: 0 0.75rem;
-        }
-        
-        .page-btn:hover {
-          background-color: rgba(241, 100, 3, 0.2);
-          transform: translateY(-2px);
-        }
-        
-        .page-btn.active {
-          background: rgba(0, 0, 0, 0.4);
-          color: white;
-          font-weight: 600;
-        }
-        
-        .page-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
         }
       `}</style>
     </div>

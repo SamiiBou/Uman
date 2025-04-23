@@ -370,35 +370,53 @@ export const dailyLogin = async (req, res) => {
 export const sendFriendRequest = async (req, res) => {
   const fromUserId = req.user.id;
   const toUserId = req.params.id;
+
+  console.log(`[sendFriendRequest] Attempting: ${fromUserId} -> ${toUserId}`);
+
   if (fromUserId === toUserId) {
+    console.log(`[sendFriendRequest] Failed: Cannot send request to self.`);
     return res.status(400).json({ message: "Cannot send friend request to yourself" });
   }
+
   try {
     const fromUser = await User.findById(fromUserId);
     const toUser = await User.findById(toUserId);
+
     if (!toUser) {
+      console.log(`[sendFriendRequest] Failed: Target user ${toUserId} not found.`);
       return res.status(404).json({ message: "Target user not found" });
     }
+
     // Already friends?
     if (fromUser.friends.includes(toUserId)) {
+      console.log(`[sendFriendRequest] Failed: Users ${fromUserId} and ${toUserId} are already friends.`);
       return res.status(400).json({ message: "Users are already friends" });
     }
+
     // Request already sent?
     if (fromUser.friendRequestsSent.includes(toUserId)) {
+      console.log(`[sendFriendRequest] Failed: Request from ${fromUserId} to ${toUserId} already sent.`);
       return res.status(400).json({ message: "Friend request already sent" });
     }
+
     // Incoming request exists?
     if (fromUser.friendRequestsReceived.includes(toUserId)) {
+      console.log(`[sendFriendRequest] Failed: User ${fromUserId} has pending request from ${toUserId}.`);
       return res.status(400).json({ message: "You have a pending request from this user" });
     }
+
     // Send request
+    console.log(`[sendFriendRequest] Proceeding to send request: ${fromUserId} -> ${toUserId}`);
     fromUser.friendRequestsSent.push(toUserId);
     toUser.friendRequestsReceived.push(fromUserId);
     await fromUser.save();
     await toUser.save();
+
+    console.log(`[sendFriendRequest] Success: Request sent from ${fromUserId} to ${toUserId}`);
     return res.json({ message: "Friend request sent" });
+
   } catch (err) {
-    console.error("Error sending friend request:", err);
+    console.error("[sendFriendRequest] Server error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -561,5 +579,69 @@ export const getUserConnectionsById = async (req, res) => {
   } catch (err) {
     console.error('Error fetching user connections by id:', err);
     return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Get all verified users.
+ */
+export const getVerifiedUsers = async (req, res) => {
+  try {
+    // Parse pagination and search parameters
+    const { query: searchTerm = '', page = 1, limit = 10 } = req.query;
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 10;
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Build query to get verified users, filtering by username if searchTerm exists
+    const query = { verified: true };
+    if (searchTerm) {
+      query.username = { $regex: searchTerm, $options: 'i' };
+    }
+
+    // Count total matching documents
+    const total = await User.countDocuments(query);
+    const pages = Math.ceil(total / limitNumber);
+
+    // Fetch paginated user list
+    const users = await User.find(query)
+      .select(
+        'username name verified walletAddress social createdAt'
+      )
+      .skip(skip)
+      .limit(limitNumber);
+
+    // Format user data for the response
+    const formattedUsers = users.map(user => ({
+      id: user._id,
+      name: user.name,
+      username: user.username,
+      verified: user.verified,
+      walletAddress: user.walletAddress,
+      createdAt: user.createdAt,
+      social: user.social,
+      avatar:
+        user.social?.google?.profileImageUrl ||
+        user.social?.twitter?.profileImageUrl ||
+        user.social?.facebook?.profileImageUrl ||
+        user.social?.instagram?.profileImageUrl ||
+        `https://api.dicebear.com/7.x/identicon/svg?seed=${user._id}`
+    }));
+
+    return res.status(200).json({
+      success: true,
+      users: formattedUsers,
+      pagination: {
+        total,
+        page: pageNumber,
+        pages
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching verified users:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching verified users'
+    });
   }
 };

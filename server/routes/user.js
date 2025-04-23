@@ -14,7 +14,8 @@ import {
   rejectFriendRequest, 
   getConnections, 
   getUserConnectionsById,
-  getUserProfileById 
+  getUserProfileById,
+  getVerifiedUsers
 } from '../controllers/user.js';
 import { verifyCloudProof } from "@worldcoin/minikit-js";
 import User from '../models/User.js';
@@ -37,6 +38,9 @@ const ERC20_ABI = [
 router.get('/search', searchUsers);
 // Search users by in-app username
 router.get('/search-app', searchAppUsers);
+
+router.get('/verified', getVerifiedUsers);
+
 
 // Token balance endpoint - peut être utilisé avec ou sans authentification
 router.get('/token-balance/:walletAddress', async (req, res) => {
