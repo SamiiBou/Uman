@@ -233,7 +233,7 @@ const RewardsHub = () => {
             setSocialVerifications(data.socialVerifications);
             console.log("Réseaux sociaux vérifiés:", data.socialVerifications);
     // Log plus détaillé pour chaque réseau social
-    console.log("Twitter vérifié:", data.socialVerifications.twitter?.verified || false);
+    console.log("Twitter vérifiéyes:", data.socialVerifications.twitter?.verified || false);
     console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
     console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
           }
