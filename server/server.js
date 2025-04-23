@@ -15,7 +15,7 @@ import createAuthRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import messageRoutes from './routes/message.js';
 
-import { createVoucher } from "./voucher.js";
+// import { createVoucher } from "./voucher.js";
 
 
 // Import des modèles
