@@ -232,7 +232,10 @@ export default function(passport) {
                         // Update verification status in database
                         await User.findByIdAndUpdate(
                           existingUser._id,
-                          { $set: { 'socialVerifications.twitter': { verified: true, timestamp: new Date() } } }
+                          { $set: { 
+                            'socialVerifications.twitter': { verified: true, timestamp: new Date() },
+                            'verified': true // Add this line to update the top-level verified field
+                          }  }
                         );
                       } else {
                         console.error(
@@ -365,7 +368,9 @@ export default function(passport) {
                 // Update verification status in database
                 await User.findByIdAndUpdate(
                   existingUser._id,
-                  { $set: { 'socialVerifications.discord': { verified: true, timestamp: new Date() } } }
+                  { $set: { 'socialVerifications.discord': { verified: true, timestamp: new Date() },
+                'verified': true
+               } }
                 );
               } else {
                 console.error(
@@ -579,7 +584,8 @@ export default function(passport) {
                 // Update verification status in database
                 await User.findByIdAndUpdate(
                   existingUser._id,
-                  { $set: { 'socialVerifications.telegram': { verified: true, timestamp: new Date() } } }
+                  { $set: { 'socialVerifications.telegram': { verified: true, timestamp: new Date() },
+                'verified': true } }
                 );
               } else {
                 console.error(
