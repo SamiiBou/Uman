@@ -154,6 +154,7 @@ export const searchUsers = async (req, res) => {
         avatar: user.social?.google?.profileImageUrl || 
                 user.social?.twitter?.profileImageUrl || 
                 user.social?.facebook?.profileImageUrl || 
+                user.social?.instagram?.profileImageUrl || 
                 `https://api.dicebear.com/7.x/identicon/svg?seed=${user._id}`
       }
     })
@@ -294,15 +295,20 @@ export const dailyLogin = async (req, res) => {
           prevStreakFactor, ratePerSec, dynamicReward
         })
 
-        // 5. Distribution on‑chain si montant > 0
+        // 5. Distribution (ajout au solde BDD) si montant > 0
         if (dynamicReward > 0 && user.walletAddress) {
           console.log(
-            `[DAILY LOGIN] Distribution de ${dynamicReward.toFixed(6)} tokens à ${user.walletAddress}`
-          )
-          await distributeTokens(user.walletAddress, dynamicReward)
-          console.log('[DAILY LOGIN] Distribution réussie')
+            `[DAILY LOGIN] Tentative d'ajout de ${dynamicReward.toFixed(6)} tokens au solde de ${user.walletAddress}`
+          );
+          const distributionResult = await distributeTokens(user.walletAddress, dynamicReward);
+          if (distributionResult.success) {
+            console.log(`[DAILY LOGIN] Ajout réussi. Nouveau solde: ${distributionResult.newBalance}`);
+          } else {
+            console.error(`[DAILY LOGIN] Échec de l'ajout au solde: ${distributionResult.message}`);
+            // Optionnel : Que faire en cas d'échec ? Pour l'instant, on log juste.
+          }
         } else {
-          console.log('[DAILY LOGIN] Pas de distribution (montant ou adresse manquante)')
+          console.log('[DAILY LOGIN] Pas d\'ajout au solde (montant nul ou adresse manquante)');
         }
       } else {
         console.log('[DAILY LOGIN] Premier jour — pas de firstLoginOfDay précédent')

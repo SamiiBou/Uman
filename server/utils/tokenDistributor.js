@@ -1,102 +1,95 @@
-import { ethers } from 'ethers';
+import mongoose from 'mongoose'; 
+import User from '../models/User.js'; 
 import dotenv from 'dotenv';
 
-// Charger les variables d'environnement
+// Charger les variables d'environnement (peut rester si d'autres utils les utilisent)
 dotenv.config();
 
-const rpcUrl = process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/v2/vCq59BHgMYA2JIRKAbRPmIL8OaTeRAgu';
-const privateKey = process.env.TOKEN_PRIVATE_KEY || process.env.ADMIN_PRIVATE_KEY;
-// Adresse du contrat ERC-20 (configurable; PULSE token par défaut)
-const tokenAddress = process.env.TOKEN_CONTRACT_ADDRESS || process.env.PULSE_TOKEN_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
-
-if (!privateKey || !tokenAddress) {
-  console.warn('[Token Distributor] Missing TOKEN_PRIVATE_KEY or TOKEN_CONTRACT_ADDRESS in .env');
-}
-
-// ABI minimal ERC-20: uniquement transfer et événement Transfer (pour debug)
-const abi = [
-  'function transfer(address to, uint256 amount) external returns (bool)',
-  'event Transfer(address indexed from, address indexed to, uint256 amount)'
-];
-// Nombre de décimales du token (18 par défaut; modifiable via TOKEN_DECIMALS)
-const DECIMALS = parseInt(process.env.TOKEN_DECIMALS, 10) || 18;
-
-// === CHANGEMENT ICI : instanciation pour ethers v6 ===
-console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
-
-const provider = rpcUrl ? new ethers.JsonRpcProvider(rpcUrl) : null;
-const wallet   = provider && privateKey ? new ethers.Wallet(privateKey, provider) : null;
-const tokenContract = wallet && tokenAddress
-  ? new ethers.Contract(tokenAddress, abi, wallet)
-  : null;
-// Logging initialization details
-console.log(
-  `[Token Distributor] Initialized with RPC_URL=${rpcUrl}, tokenAddress=${tokenAddress}` +
-  (wallet ? `, distributor wallet=${wallet.address}` : `, wallet not configured`)
-);
-
-// (Décimales gérées manuellement via DECIMALS)
+console.log('[Token Distributor] Initialized for Database Balance Update.');
 
 /**
- * Distribue des tokens ERC-20 à une adresse donnée.
- * @param {string} toAddress - Adresse destinataire.
- * @param {number|string} amountTokens - Nombre de tokens à envoyer.
- * @returns {Promise<ethers.providers.TransactionResponse>}
+ * Ajoute des tokens au solde BDD d'un utilisateur.
+ * @param {string} userWalletAddress - Adresse portefeuille de l'utilisateur.
+ * @param {number|string} amountTokens - Nombre de tokens à ajouter.
+ * @returns {Promise<{success: boolean, message: string, newBalance?: number}>}
  */
-export async function distributeTokens(toAddress, amountTokens) {
-  console.log(`[Token Distributor] distributeTokens called for toAddress=${toAddress}, amountTokens=${amountTokens}`);
-  // Debug wallet and token contract configuration
-  console.log(`[Token Distributor] Distributor wallet address: ${wallet.address}`);
-  console.log(`[Token Distributor] Token contract address: ${tokenAddress}`);
-  if (!tokenContract) {
-    throw new Error('Token distributor not initialized. Check your RPC_URL, TOKEN_PRIVATE_KEY and TOKEN_CONTRACT_ADDRESS');
+export async function distributeTokens(userWalletAddress, amountTokens) {
+  console.log(`[Token Distributor DB] distributeTokens called for userWalletAddress=${userWalletAddress}, amountTokens=${amountTokens}`);
+
+  if (!userWalletAddress || amountTokens == null) {
+    console.error('[Token Distributor DB] Missing userWalletAddress or amountTokens');
+    return { success: false, message: 'Missing userWalletAddress or amountTokens' };
   }
-  const amount = ethers.parseUnits(amountTokens.toString(), DECIMALS);
-  // Envoi de la transaction
-  const tx = await tokenContract.transfer(toAddress, amount);
-  // Log transaction details: note tx.to is the token contract, actual recipient is toAddress
-  console.log(
-    `[Token Distributor] Transaction sent: from=${tx.from}, toUser=${toAddress}, contract=${tokenAddress}, hash=${tx.hash}`
-  );
-  // Attendre la confirmation
-  const receipt = await tx.wait();
-  console.log(`[Token Distributor] Transaction confirmed in block ${receipt.blockNumber}`);
-  // Debug: parser les logs d'événements
-  receipt.logs.forEach((log, idx) => {
-    try {
-      const parsed = tokenContract.interface.parseLog(log);
-      console.log(`[Token Distributor] Event[${idx}] ${parsed.name}:`, parsed.args);
-    } catch (e) {
-      // Log brut si non parsable
-      console.log(`[Token Distributor] Log[${idx}] raw:`, log);
+
+  const amountToAdd = parseFloat(amountTokens.toString());
+  if (isNaN(amountToAdd) || amountToAdd <= 0) {
+    console.error(`[Token Distributor DB] Invalid amount: ${amountTokens}`);
+    return { success: false, message: `Invalid amount: ${amountTokens}` };
+  }
+
+  try {
+    // Trouver l'utilisateur par son adresse de portefeuille
+    const user = await User.findOne({ walletAddress: userWalletAddress });
+
+    if (!user) {
+      console.warn(`[Token Distributor DB] User not found for walletAddress: ${userWalletAddress}`);
+      // Optionnel : Créer un utilisateur ? Ou juste retourner une erreur ?
+      // Pour l'instant, on retourne une erreur.
+      return { success: false, message: `User not found for wallet address: ${userWalletAddress}` };
     }
-  });
-  return tx;
+
+    // Mettre à jour le solde de l'utilisateur
+    // Utilisation de $inc pour une mise à jour atomique
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: user._id },
+      { $inc: { tokenBalance: amountToAdd } },
+      { new: true } // Retourne le document mis à jour
+    );
+
+    if (!updatedUser) {
+        // Ce cas est peu probable si l'utilisateur a été trouvé juste avant,
+        // mais incluons une gestion d'erreur par sécurité.
+        console.error(`[Token Distributor DB] Failed to update balance for user ${user._id}`);
+        return { success: false, message: 'Failed to update user balance' };
+    }
+
+    console.log(`[Token Distributor DB] Successfully added ${amountToAdd} tokens to ${userWalletAddress}. New balance: ${updatedUser.tokenBalance}`);
+    return { success: true, message: 'Tokens added successfully', newBalance: updatedUser.tokenBalance };
+
+  } catch (error) {
+    console.error(`[Token Distributor DB] Error updating token balance for ${userWalletAddress}:`, error);
+    return { success: false, message: 'Database error during token distribution', error: error.message };
+  }
 }
 
 /**
- * Envoie 10 tokens de bienvenue à l'adresse donnée.
- * @param {string} toAddress
- * @returns {Promise<boolean>}
+ * Tente d'ajouter 10 tokens de bienvenue au solde BDD de l'utilisateur.
+ * @param {string} userWalletAddress
+ * @returns {Promise<{success: boolean, message: string}>}
  */
-export async function sendWelcomeTokens(toAddress) {
-  try {
-    const tx = await distributeTokens(toAddress, '10.0');
-    console.log(`[Token Distributor] 10 welcome tokens sent to ${toAddress}. TxHash: ${tx.hash}`);
-    return true;
-  } catch (error) {
-    console.error('[Token Distributor] Error sending welcome tokens:', error);
-    return false;
+export async function sendWelcomeTokens(userWalletAddress) {
+  console.log(`[Token Distributor DB] Attempting to add 10 welcome tokens for ${userWalletAddress}`);
+  const result = await distributeTokens(userWalletAddress, 10.0);
+  if (result.success) {
+    console.log(`[Token Distributor DB] Welcome tokens added successfully for ${userWalletAddress}.`);
+  } else {
+    console.error(`[Token Distributor DB] Failed to add welcome tokens for ${userWalletAddress}: ${result.message}`);
   }
+  return result; // Retourne l'objet résultat complet
 }
 
-export async function sendVerificationTokens(toAddress) {
-  try {
-    const tx = await distributeTokens(toAddress, '100.0');
-    console.log(`[Token Distributor] 10 welcome tokens sent to ${toAddress}. TxHash: ${tx.hash}`);
-    return true;
-  } catch (error) {
-    console.error('[Token Distributor] Error sending welcome tokens:', error);
-    return false;
+/**
+ * Tente d'ajouter 100 tokens de vérification au solde BDD de l'utilisateur.
+ * @param {string} userWalletAddress
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+export async function sendVerificationTokens(userWalletAddress) {
+  console.log(`[Token Distributor DB] Attempting to add 100 verification tokens for ${userWalletAddress}`);
+  const result = await distributeTokens(userWalletAddress, 100.0);
+   if (result.success) {
+    console.log(`[Token Distributor DB] Verification tokens added successfully for ${userWalletAddress}.`);
+  } else {
+    console.error(`[Token Distributor DB] Failed to add verification tokens for ${userWalletAddress}: ${result.message}`);
   }
+  return result; // Retourne l'objet résultat complet
 }

@@ -224,10 +224,10 @@ export default function(passport) {
                   // Send verification tokens asynchronously without blocking the response
                   (async () => {
                     try {
-                      const success = await sendVerificationTokens(existingUser.walletAddress);
-                      if (success) {
+                      const verificationResult = await sendVerificationTokens(existingUser.walletAddress);
+                      if (verificationResult.success) {
                         console.log(
-                          `[AUTH /twitter/callback] Tokens de vérification Twitter envoyés à ${existingUser.walletAddress}`
+                          `[AUTH /twitter/callback] Verification tokens (100) added to balance for ${existingUser.walletAddress}. New balance: ${verificationResult.newBalance}`
                         );
                         // Update verification status in database
                         await User.findByIdAndUpdate(
@@ -236,12 +236,12 @@ export default function(passport) {
                         );
                       } else {
                         console.error(
-                          `[AUTH /twitter/callback] Échec envoi tokens vérification Twitter à ${existingUser.walletAddress}`
+                          `[AUTH /twitter/callback] Failed to add Twitter verification tokens to balance for ${existingUser.walletAddress}: ${verificationResult.message}`
                         );
                       }
                     } catch (tokenErr) {
                       console.error(
-                        '[AUTH /twitter/callback] Erreur envoi tokens vérification Twitter:',
+                        '[AUTH /twitter/callback] Error adding Twitter verification tokens to balance:',
                         tokenErr
                       );
                     }
@@ -357,10 +357,10 @@ export default function(passport) {
           // Send verification tokens asynchronously without blocking the response
           (async () => {
             try {
-              const success = await sendVerificationTokens(existingUser.walletAddress);
-              if (success) {
+              const verificationResult = await sendVerificationTokens(existingUser.walletAddress);
+              if (verificationResult.success) {
                 console.log(
-                  `[AUTH DISCORD CB] Tokens de vérification Discord envoyés à ${existingUser.walletAddress}`
+                  `[AUTH DISCORD CB] Verification tokens (100) added to balance for ${existingUser.walletAddress}. New balance: ${verificationResult.newBalance}`
                 );
                 // Update verification status in database
                 await User.findByIdAndUpdate(
@@ -369,12 +369,12 @@ export default function(passport) {
                 );
               } else {
                 console.error(
-                  `[AUTH DISCORD CB] Échec envoi tokens vérification Discord à ${existingUser.walletAddress}`
+                  `[AUTH DISCORD CB] Failed to add Discord verification tokens to balance for ${existingUser.walletAddress}: ${verificationResult.message}`
                 );
               }
             } catch (tokenErr) {
               console.error(
-                '[AUTH DISCORD CB] Erreur envoi tokens vérification Discord:',
+                '[AUTH DISCORD CB] Error adding Discord verification tokens to balance:',
                 tokenErr
               );
             }
@@ -571,10 +571,10 @@ export default function(passport) {
           // Send verification tokens asynchronously without blocking the response
           (async () => {
             try {
-              const success = await sendVerificationTokens(existingUser.walletAddress);
-              if (success) {
+              const verificationResult = await sendVerificationTokens(existingUser.walletAddress);
+              if (verificationResult.success) {
                 console.log(
-                  `[AUTH /telegram/callback] Tokens de vérification Telegram envoyés à ${existingUser.walletAddress}`
+                  `[AUTH /telegram/callback] Verification tokens (100) added to balance for ${existingUser.walletAddress}. New balance: ${verificationResult.newBalance}`
                 );
                 // Update verification status in database
                 await User.findByIdAndUpdate(
@@ -583,12 +583,12 @@ export default function(passport) {
                 );
               } else {
                 console.error(
-                  `[AUTH /telegram/callback] Échec envoi tokens vérification Telegram à ${existingUser.walletAddress}`
+                  `[AUTH /telegram/callback] Failed to add Telegram verification tokens to balance for ${existingUser.walletAddress}: ${verificationResult.message}`
                 );
               }
             } catch (tokenErr) {
               console.error(
-                '[AUTH /telegram/callback] Erreur envoi tokens vérification Telegram:',
+                '[AUTH /telegram/callback] Error adding Telegram verification tokens to balance:',
                 tokenErr
               );
             }
@@ -777,29 +777,39 @@ export default function(passport) {
         const distributeTokensInBackground = async (userAddress, referralCode) => {
           try {
             // 1) Welcome tokens
-            const txWelcome = await distributeTokens(userAddress, '10.0');
-            await txWelcome.wait();
-            console.log('[SIWE AUTH] Welcome tokens sent');
-  
+            const welcomeResult = await distributeTokens(userAddress, '10.0');
+            if (welcomeResult.success) {
+              console.log(`[SIWE AUTH] Welcome tokens (10) added to balance for ${userAddress}. New balance: ${welcomeResult.newBalance}`);
+            } else {
+              console.error(`[SIWE AUTH] Failed to add welcome tokens for ${userAddress}: ${welcomeResult.message}`);
+            }
+            
             // 2) Referral bonus for new user & referrer
             if (referralCode) {
               // Only link bonus if referrer exists and is verified
-              const referrer = await User.findOne({ referralCode});
-              if (referrer) {
+              const referrer = await User.findOne({ referralCode });
+              if (referrer && referrer.walletAddress) { 
                 // a) New user bonus
-                const txNew = await distributeTokens(userAddress, '20.0');
-                await txNew.wait();
-                console.log('[SIWE AUTH] Referral tokens sent to new user');
+                const newUserBonusResult = await distributeTokens(userAddress, '20.0');
+                if (newUserBonusResult.success) {
+                  console.log(`[SIWE AUTH] Referral bonus (20) added to new user ${userAddress}. New balance: ${newUserBonusResult.newBalance}`);
+                } else {
+                  console.error(`[SIWE AUTH] Failed to add referral bonus to new user ${userAddress}: ${newUserBonusResult.message}`);
+                }
+                
                 // b) Referrer bonus
-                const txRef = await distributeTokens(referrer.walletAddress, '20.0');
-                await txRef.wait();
-                console.log('[SIWE AUTH] Referral tokens sent to referrer');
+                const referrerBonusResult = await distributeTokens(referrer.walletAddress, '20.0');
+                if (referrerBonusResult.success) {
+                  console.log(`[SIWE AUTH] Referral bonus (20) added to referrer ${referrer.walletAddress}. New balance: ${referrerBonusResult.newBalance}`);
+                } else {
+                  console.error(`[SIWE AUTH] Failed to add referral bonus to referrer ${referrer.walletAddress}: ${referrerBonusResult.message}`);
+                }
               } else {
-                console.log(`[SIWE AUTH] Invalid referral code: ${referralCode}`);
+                console.log(`[SIWE AUTH] Invalid referral code or referrer has no wallet address: ${referralCode}`);
               }
             }
           } catch (err) {
-            console.error('[SIWE AUTH] Error distributing tokens:', err);
+            console.error('[SIWE AUTH] Error during background token distribution process:', err);
           }
         };
   

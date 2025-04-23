@@ -222,6 +222,15 @@ const RewardsHub = () => {
             setReferralCode(data.referralCode);
           }
           
+          // Utiliser le tokenBalance de la BDD
+          if (data.tokenBalance !== undefined && data.tokenBalance !== null) {
+            console.log(`[RewardsHub] Récupération du tokenBalance BDD: ${data.tokenBalance}`);
+            setUmiBalance(parseFloat(data.tokenBalance));
+          } else {
+            console.warn('[RewardsHub] tokenBalance non trouvé dans la réponse /auth/me, initialisation à 0.');
+            setUmiBalance(0); // Fallback si non présent
+          }
+          
           // Set human verification status
           if (data.verified === true) {
             setIsHumanVerified(true);
@@ -246,13 +255,6 @@ const RewardsHub = () => {
           }
         }
         
-        // Fetch token balance after getting user data
-        if (data.walletAddress) {
-          fetchTokenBalance(data.walletAddress);
-        } else if (storedWalletAddress) {
-          fetchTokenBalance(storedWalletAddress);
-        }
-        
         // Fetch daily login streak data
         fetchDailyLoginData(storedToken);
       })
@@ -271,55 +273,6 @@ const RewardsHub = () => {
     }
   }, []);
   
-  // Function to fetch token balance (similar to ConnectAccounts)
-  const fetchTokenBalance = async (address = null) => {
-    try {
-      const targetAddress = address || walletAddress;
-      if (!targetAddress || !TOKEN_CONTRACT_ADDRESS) {
-        // console.log("Missing wallet address or contract address to retrieve balance");
-        return null;
-      }
-
-      // Method 1: Use API if a token is available (retrieve from state or localStorage)
-      const authToken = token || localStorage.getItem('auth_token');
-      if (authToken) {
-        // console.log(`Retrieving token balance via API for address: ${targetAddress}`);
-        const response = await axios.get(`${API_BASE_URL}/users/token-balance/${targetAddress}`, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        });
-        
-        if (response.data.status === "success") {
-          // console.log(`Balance retrieved from API: ${response.data.balance}`);
-          setUmiBalance(parseFloat(response.data.balance));
-          return response.data.balance;
-        } else {
-          throw new Error("Failed to retrieve balance via API");
-        }
-      } else {
-        // Method 2: Use ethers.js directly (as fallback)
-        // console.log(`Direct retrieval of token balance with ethers.js for: ${targetAddress}`);
-        const provider = window.ethereum
-          ? new ethers.providers.Web3Provider(window.ethereum)
-          : ethers.getDefaultProvider();
-          
-        const contract = new ethers.Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
-        const [rawBalance, decimals] = await Promise.all([
-          contract.balanceOf(targetAddress),
-          contract.decimals()
-        ]);
-        
-        const formatted = ethers.utils.formatUnits(rawBalance, decimals);
-        // console.log(`Balance retrieved directly: ${formatted}`);
-        setUmiBalance(parseFloat(formatted));
-        return formatted;
-      }
-    } catch (err) {
-      console.error('Error retrieving token balance:', err);
-      setIsLoading(false);
-      return null;
-    }
-  };
-
   // Live counter effect: increment liveCounter each second up to todaysReward
   useEffect(() => {
     if (lastLoginTime && todaysReward != null) {
@@ -441,21 +394,21 @@ const RewardsHub = () => {
       type: 'info'
     });
     
-    const balance = await fetchTokenBalance();
+    // const balance = await fetchTokenBalance();
     
-    if (balance !== null) {
-      setNotification({
-        show: true,
-        message: `Balance updated: ${balance}`,
-        type: 'success'
-      });
-    } else {
-      setNotification({
-        show: true,
-        message: "Failed to refresh balance",
-        type: 'error'
-      });
-    }
+    // if (balance !== null) {
+    //   setNotification({
+    //     show: true,
+    //     message: `Balance updated: ${balance}`,
+    //     type: 'success'
+    //   });
+    // } else {
+    //   setNotification({
+    //     show: true,
+    //     message: "Failed to refresh balance",
+    //     type: 'error'
+    //   });
+    // }
     
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'info' });

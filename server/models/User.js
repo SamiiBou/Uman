@@ -173,7 +173,13 @@ const UserSchema = new mongoose.Schema({
   friends: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  // Nouvelle balance de tokens
+  tokenBalance: {
+    type: Number, // Ou mongoose.Schema.Types.Decimal128 pour plus de précision
+    default: 0,
+    min: 0 // S'assurer que la balance n'est jamais négative
+  }
 })
 
 const User = mongoose.model('User', UserSchema)
