@@ -6,19 +6,19 @@ import { FaTwitter, FaTelegramPlane, FaDiscord } from 'react-icons/fa';
 
 const FaX = () => (
   <svg 
-    width="1em" 
-    height="1em" 
+    width="1.05em" 
+    height="1.05em" 
     viewBox="0 0 24 24" 
     fill="currentColor" 
     xmlns="http://www.w3.org/2000/svg"
-    style={{ marginTop: '14%' }}
+    style={{ marginTop: '0%' }}
   >
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
 
 // Token contract details (copied from ConnectAccounts)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api';
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -103,6 +103,11 @@ const RewardsHub = () => {
   // Fonction pour ouvrir le groupe Telegram
   const openTelegramGroup = () => {
     window.open('https://t.me/+W3pxAJb4yNk5MWM0', '_blank');
+  };
+  
+  // Fonction pour ouvrir le profil X
+  const openXProfile = () => {
+    window.open('https://x.com/umantheapp', '_blank');
   };
 
   useEffect(() => {
@@ -507,10 +512,19 @@ const RewardsHub = () => {
                 </div>
               </div>
               
-              {/* Nouveau: Bouton Telegram */}
-              <div className="telegram-link" onClick={openTelegramGroup}>
-                <FaTelegramPlane size={18} />
-                <span className="telegram-text">Join Us</span>
+              {/* Social Links Container */}
+              <div className="social-links">
+                {/* Bouton Telegram */}
+                <div className="telegram-link" onClick={openTelegramGroup}>
+                  <FaTelegramPlane size={18} />
+                  <span className="telegram-text">Join Us</span>
+                </div>
+                
+                {/* Nouveau: Bouton X */}
+                <div className="x-link" onClick={openXProfile}>
+                  <FaX />
+                  <span className="x-text">Join Us</span>
+                </div>
               </div>
             </div>
           </div>
@@ -714,8 +728,6 @@ const RewardsHub = () => {
           color: #303421;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
           position: relative;
-          padding: 1rem;
-          padding-bottom: 1rem;
         }
         
         .background {
@@ -774,6 +786,13 @@ const RewardsHub = () => {
           gap: 10px;
         }
         
+        /* Social links container */
+        .social-links {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
         /* Improved balance display */
         .balance-display {
             display: flex;
@@ -784,7 +803,7 @@ const RewardsHub = () => {
             border-radius: 6px; /* Réduit de 8px à 6px */
             padding: 0.25rem 0.5rem; /* Réduit de 0.4rem 0.7rem */
             transition: all 0.2s ease;
-            }
+        }
         
         .balance-display:hover {
           background-color: rgba(241, 100, 3, 0.12);
@@ -1393,32 +1412,79 @@ const RewardsHub = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Responsive Styles */
-        @media (max-width: 380px) {
-          .content-container {
-            padding: 0.75rem;
-          }
-          
-          .mini-balance {
-            font-size: 0.8rem;
-            padding: 0.25rem 0.5rem;
-          }
-          
-          .profile-image-container {
-            width: 80px;
-            height: 80px;
-          }
-          
-          .earnings-number {
-            font-size: 1.1rem;
-          }
-          
-          .claim-soon-text {
-            font-size: 0.7rem;
-          }
+        /* Style du bouton Telegram */
+        .telegram-link {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background-color: rgba(0, 136, 204, 0.08);
+          border: 1px solid rgba(0, 136, 204, 0.2);
+          color: #0088cc;
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
         }
         
-        /* Dark mode support */
+        .telegram-link:hover {
+          background-color: rgba(0, 136, 204, 0.15);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .telegram-text {
+          font-size: 0.8rem;
+          line-height: 1;
+        }
+        
+        /* Style du bouton X (Twitter) */
+        .x-link {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-top:0.65%;
+          background-color: rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0, 0, 0, 0.15);
+          color: #000000;
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-weight: 500;
+          line-height: 1;
+        }
+        
+        .x-link:hover {
+          background-color: rgba(0, 0, 0, 0.1);
+          transform: translateY(-1px);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .x-text {
+          font-size: 0.8rem;
+          line-height: 1;
+        }
+        
+        /* Social badges */
+        .social-badges {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 0.5rem;
+        }
+        
+        .social-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        
+        /* Dark mode support pour les boutons sociaux */
         @media (prefers-color-scheme: dark) {
           .rewards-hub {
             background-color: #303421;
@@ -1478,53 +1544,7 @@ const RewardsHub = () => {
           .claim-soon-text {
             color: #f28011;
           }
-        }
-        
-        .social-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
-        }
-        
-        .social-badge {
-          padding: 0.25rem 0.5rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        
-        /* Nouveau style pour le lien Telegram */
-        .telegram-link {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          background-color: rgba(0, 136, 204, 0.08);
-          border: 1px solid rgba(0, 136, 204, 0.2);
-          color: #0088cc;
-          border-radius: 6px;
-          padding: 0.25rem 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-weight: 500;
-        }
-        
-        .telegram-link:hover {
-          background-color: rgba(0, 136, 204, 0.15);
-          transform: translateY(-1px);
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .telegram-text {
-          font-size: 0.8rem;
-          line-height: 1;
-        }
-        
-        /* Dark mode support pour le bouton Telegram */
-        @media (prefers-color-scheme: dark) {
+          
           .telegram-link {
             background-color: rgba(0, 136, 204, 0.15);
             border-color: rgba(0, 136, 204, 0.3);
@@ -1533,16 +1553,54 @@ const RewardsHub = () => {
           .telegram-link:hover {
             background-color: rgba(0, 136, 204, 0.25);
           }
+          
+          .x-link {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+          }
+          
+          .x-link:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+          }
         }
         
-        /* Support responsive pour le bouton Telegram */
+        /* Support responsive pour les boutons sociaux */
         @media (max-width: 380px) {
-          .telegram-text {
+          .content-container {
+            padding: 0.75rem;
+          }
+          
+          .mini-balance {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+          }
+          
+          .profile-image-container {
+            width: 80px;
+            height: 80px;
+          }
+          
+          .earnings-number {
+            font-size: 1.1rem;
+          }
+          
+          .claim-soon-text {
+            font-size: 0.7rem;
+          }
+          
+          .telegram-text,
+          .x-text {
             display: none;
           }
           
-          .telegram-link {
+          .telegram-link,
+          .x-link {
             padding: 0.25rem;
+          }
+          
+          .social-links {
+            gap: 5px;
           }
         }
       `}</style>
