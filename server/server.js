@@ -168,13 +168,13 @@ app.use((err, req, res, next) => {
      });
 });
 
-router.post("/request-airdrop", authenticateToken, async (req, res) => {
-    const { amount } = req.body;
-    const { walletAddress } = req.user;
-    // (ex. check KYC, pas déjà réclamé…)
-    const { voucher, signature } = await createVoucher(walletAddress, amount);
-    res.json({ voucher, signature });
-  });
+// router.post("/request-airdrop", authenticateToken, async (req, res) => {
+//     const { amount } = req.body;
+//     const { walletAddress } = req.user;
+//     // (ex. check KYC, pas déjà réclamé…)
+//     const { voucher, signature } = await createVoucher(walletAddress, amount);
+//     res.json({ voucher, signature });
+//   });
 
 
 // Démarrer le serveur
