@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Award, Info, Gift, Shield, User, Check, RefreshCw, Copy } from "lucide-react";
+import { ChevronLeft, Award, Info, Gift, Shield, User, Check, RefreshCw, Copy, Clock } from "lucide-react";
 import axios from "axios";
 import { ethers } from 'ethers';
 import { FaTwitter, FaTelegramPlane, FaDiscord } from 'react-icons/fa';
@@ -629,6 +629,14 @@ const RewardsHub = () => {
                     </div>
                   </div>
                 )}
+                
+                {/* NOUVEAU: Notification de réclamation UMI à venir */}
+                <div className="claim-soon-notification">
+                  <div className="claim-soon-icon">
+                    <Clock size={14} />
+                  </div>
+                  <span className="claim-soon-text">UMI token claiming coming soon!</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1155,6 +1163,43 @@ const RewardsHub = () => {
           100% { transform: scale(0.7); opacity: 0.5; }
         }
         
+        /* NOUVEAU: Notification de réclamation UMI à venir */
+        .claim-soon-notification {
+          margin-top: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: rgba(241, 100, 3, 0.04);
+          border: 1px dashed rgba(241, 100, 3, 0.15);
+          border-radius: 8px;
+          padding: 0.5rem 0.7rem;
+          transition: all 0.3s;
+          animation: gentle-fade 3s infinite alternate;
+        }
+        
+        @keyframes gentle-fade {
+          0% { opacity: 0.85; }
+          100% { opacity: 1; }
+        }
+        
+        .claim-soon-icon {
+          color: #f28011;
+          display: flex;
+          align-items: center;
+          animation: rotate 8s linear infinite;
+        }
+        
+        @keyframes rotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        .claim-soon-text {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #f28011;
+        }
+        
         /* NEW: Minimalist Referral Section */
         .referral-section {
           margin-bottom: 1.5rem;
@@ -1365,6 +1410,10 @@ const RewardsHub = () => {
           .earnings-number {
             font-size: 1.1rem;
           }
+          
+          .claim-soon-text {
+            font-size: 0.7rem;
+          }
         }
         
         /* Dark mode support */
@@ -1417,6 +1466,15 @@ const RewardsHub = () => {
           
           .earnings-label {
             color: rgba(244, 233, 183, 0.7);
+          }
+          
+          .claim-soon-notification {
+            background: rgba(241, 100, 3, 0.06);
+            border-color: rgba(241, 100, 3, 0.2);
+          }
+          
+          .claim-soon-text {
+            color: #f28011;
           }
         }
         

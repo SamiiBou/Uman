@@ -697,7 +697,7 @@ export default function(passport) {
       let usernameToUse = username;
       if (!usernameToUse) {
         usernameToUse = `user_${userAddress.substring(2, 8)}`;
-        console.log(`[SIWE AUTH] No username provided, generated: ${usernameToUse}`);
+        console.log(`[SIWE AUTH] No username påçrovided, generated: ${usernameToUse}`);
       }
   
       // Check for linking
