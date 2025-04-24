@@ -242,35 +242,32 @@ export const searchAppUsers = async (req, res) => {
  */
 export const dailyLogin = async (req, res) => {
   try {
-    // 1. Identification de l’utilisateur
     const userId = req.user.id
     console.log(`[DAILY LOGIN] Début pour userId=${userId}`)
 
-    // 2. Chargement du user
+    // 1. Chargement de l’utilisateur
     const user = await User.findById(userId)
     if (!user) {
       console.log(`[DAILY LOGIN] User non trouvé: ${userId}`)
       return res.status(404).json({ message: 'User not found' })
     }
 
-    const now = new Date()
+    const now        = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const lastLogin = user.dailyLogin.lastLogin
-    const lastDay = lastLogin
+    const lastLogin  = user.dailyLogin.lastLogin
+    const lastDay    = lastLogin
       ? new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate())
       : null
 
-    // 3. Détection d’une "nouvelle réclamation" (première connexion du jour)
+    // 2. Détection d'une nouvelle réclamation (première connexion du jour)
     const isNewClaim = !(lastDay && lastDay.getTime() === todayStart.getTime())
 
-    // Montant à distribuer pour la session précédente
     let dynamicReward = 0
 
     if (isNewClaim) {
-      // 4. Si ce n’est pas le tout premier jour (firstLoginOfDay existant) :
+      // Si on a un firstLoginOfDay précédent, on calcule le fractionnaire
       if (user.dailyLogin.firstLoginOfDay) {
-        const prevFirst = new Date(user.dailyLogin.firstLoginOfDay)
-        // On calcule minuit qui suit cette première connexion
+        const prevFirst    = new Date(user.dailyLogin.firstLoginOfDay)
         const nextMidnight = new Date(
           prevFirst.getFullYear(),
           prevFirst.getMonth(),
@@ -278,80 +275,69 @@ export const dailyLogin = async (req, res) => {
           0, 0, 0
         )
 
-        // Durée en secondes entre firstLoginOfDay et ce minuit
-        const secondsActive = (nextMidnight.getTime() - prevFirst.getTime()) / 1000
-
-        // Streak avant mise à jour (max 5)
+        const secondsActive   = (nextMidnight - prevFirst) / 1000
         const prevStreakFactor = Math.min(user.dailyLogin.currentStreak, 5)
-
-        // Taux fractionnaire de jetons par seconde (10 tokens × streak sur 24h)
-        const ratePerSec = (prevStreakFactor * 10) / (24 * 3600)
-
-        // Montant fractionnaire
-        dynamicReward = ratePerSec * secondsActive
+        const ratePerSec       = (prevStreakFactor * 10) / (24 * 3600)
+        dynamicReward          = ratePerSec * secondsActive
 
         console.log('[DAILY LOGIN] Calcul dynamicReward:', {
           prevFirst, nextMidnight, secondsActive,
           prevStreakFactor, ratePerSec, dynamicReward
         })
-
-        // 5. Distribution (ajout au solde BDD) si montant > 0
-        if (dynamicReward > 0 && user.walletAddress) {
-          console.log(
-            `[DAILY LOGIN] Tentative d'ajout de ${dynamicReward.toFixed(6)} tokens au solde de ${user.walletAddress}`
-          );
-          const distributionResult = await distributeTokens(user.walletAddress, dynamicReward);
-          if (distributionResult.success) {
-            console.log(`[DAILY LOGIN] Ajout réussi. Nouveau solde: ${distributionResult.newBalance}`);
-          } else {
-            console.error(`[DAILY LOGIN] Échec de l'ajout au solde: ${distributionResult.message}`);
-            // Optionnel : Que faire en cas d'échec ? Pour l'instant, on log juste.
-          }
-        } else {
-          console.log('[DAILY LOGIN] Pas d\'ajout au solde (montant nul ou adresse manquante)');
-        }
       } else {
         console.log('[DAILY LOGIN] Premier jour — pas de firstLoginOfDay précédent')
       }
 
-      // ===== MISE À JOUR DU STREAK POUR LE JOUR COURANT =====
-      let newStreak = 1
-      if (lastDay) {
-        const yesterday = new Date(todayStart)
-        yesterday.setDate(yesterday.getDate() - 1)
-        if (lastDay.getTime() === yesterday.getTime()) {
-          newStreak = user.dailyLogin.currentStreak + 1
-          console.log('[DAILY LOGIN] Streak incrémenté:', newStreak)
-        } else {
-          console.log('[DAILY LOGIN] Streak réinitialisé à 1 (non consécutif)')
+      // 3. Mise à jour atomique de la balance et du streak
+      const yesterday = new Date(todayStart)
+      yesterday.setDate(yesterday.getDate() - 1)
+
+      const newStreak = lastDay && lastDay.getTime() === yesterday.getTime()
+        ? user.dailyLogin.currentStreak + 1
+        : 1
+
+      console.log('[DAILY LOGIN] Streak mis à jour:', newStreak)
+
+      // updateOne atomique pour éviter les conflits
+      await User.updateOne(
+        { _id: userId },
+        {
+          $inc:  { tokenBalance: dynamicReward },
+          $set: {
+            'dailyLogin.currentStreak'   : newStreak,
+            'dailyLogin.maxStreak'       : Math.max(user.dailyLogin.maxStreak || 0, newStreak),
+            'dailyLogin.firstLoginOfDay' : now,
+            'dailyLogin.lastLogin'       : now
+          }
         }
-      } else {
-        console.log('[DAILY LOGIN] Premier streak initialisé à 1')
-      }
-      user.dailyLogin.currentStreak = newStreak
-      user.dailyLogin.maxStreak = Math.max(user.dailyLogin.maxStreak || 0, newStreak)
+      )
 
-      // ===== RÉINITIALISATION DES TIMESTAMPS =====
-      user.dailyLogin.firstLoginOfDay = now
-      user.dailyLogin.lastLogin = now
-
-      // Sauvegarde après mise à jour
-      await user.save()
+      console.log(
+        `[DAILY LOGIN] +${dynamicReward.toFixed(6)} UMI crédités hors-chaîne et streak enregistré`
+      )
 
     } else {
-      // Pas une nouvelle journée : mise à jour de lastLogin seulement
-      user.dailyLogin.lastLogin = now
+      // Même jour : on met à jour uniquement lastLogin
+      await User.updateOne(
+        { _id: userId },
+        { $set: { 'dailyLogin.lastLogin': now } }
+      )
       console.log('[DAILY LOGIN] Même jour — lastLogin mis à jour')
-      await user.save()
     }
 
-    // 6. Réponse au client
+    // 4. Envoi de la réponse
+    // On récupère l'état actuel pour répondre
+    const updatedUser = await User.findById(userId).select(
+      'dailyLogin.currentStreak dailyLogin.maxStreak dailyLogin.firstLoginOfDay dailyLogin.lastLogin tokenBalance'
+    )
+
     return res.json({
-      distributedReward: dynamicReward,               // montant fractionnaire envoyé
-      currentStreak:    user.dailyLogin.currentStreak,
-      maxStreak:        user.dailyLogin.maxStreak,
-      firstLoginOfDay:  user.dailyLogin.firstLoginOfDay,
-      lastLogin:        user.dailyLogin.lastLogin
+      distributedReward: dynamicReward,
+      currentStreak:    updatedUser.dailyLogin.currentStreak,
+      maxStreak:        updatedUser.dailyLogin.maxStreak,
+      firstLoginOfDay:  updatedUser.dailyLogin.firstLoginOfDay,
+      lastLogin:        updatedUser.dailyLogin.lastLogin,
+      tokenBalance:     updatedUser.tokenBalance
     })
 
   } catch (err) {
