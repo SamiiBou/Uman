@@ -183,10 +183,10 @@ const RewardsHub = () => {
     /* ─────────────────────────────
      * 3. Construction des arguments
      * ────────────────────────────*/
-    let voucherArgs: [string, string, string, string];
+    let voucherArgs;
     try {
       voucherArgs = encodeVoucher(voucher);
-    } catch (err: any) {
+    } catch (err) {
       // erreur « voucher manquant » ou structure invalide
       setNotification({ show: true, message: err.message, type: "error" });
       setIsLoading(false);
