@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Award, Info, Gift, Shield, User, Check, RefreshCw, Copy, Clock } from "lucide-react";
 import axios from "axios";
-import { ethers } from 'ethers';
+import { ethers, BrowserProvider, Contract, formatUnits } from 'ethers';
 import { FaTwitter, FaTelegramPlane, FaDiscord } from 'react-icons/fa';
+import { MiniKit } from "@worldcoin/minikit-js";
+import distributorAbi from '../abi/Distributor.json';
+import { encodeVoucher } from '../utils/encodeVoucher';
 
 const FaX = () => (
   <svg 
@@ -19,6 +22,8 @@ const FaX = () => (
 
 // Token contract details (copied from ConnectAccounts)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api';
+const BACKEND_URL = 'https://03a5f6ad56ec.ngrok.app';
+const API_TIMEOUT = 15000;
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
@@ -27,9 +32,9 @@ const ERC20_ABI = [
 
 const RewardsHub = () => {
   // Replace mock states with real data states
-  const [umiBalance, setUmiBalance] = useState(null);
-  const [currentStreak, setCurrentStreak] = useState(null);
-  const [maxStreak, setMaxStreak] = useState(null);
+  const [umiBalance,    setUmiBalance]    = useState(0); // claimable
+  const [walletBalance, setWalletBalance] = useState(null); // on-chain
+  const [currentStreak, setCurrentStreak] = useState(null);  const [maxStreak, setMaxStreak] = useState(null);
   const [todaysReward, setTodaysReward] = useState(null);
   // Live counter for tokens earned since login
   const [lastLoginTime, setLastLoginTime] = useState(null);
@@ -99,6 +104,92 @@ const RewardsHub = () => {
   const [socialVerifications, setSocialVerifications] = useState({});
   
   const scrollContainerRef = useRef(null);
+
+  // Fonction pour réclamer des tokens - ajoutée depuis Home component
+  const claimTokens = async () => {
+    setIsLoading(true);
+    setNotification({ show: true, message: 'Claiming tokens…', type: 'info' });
+
+    // 1) Vérification adresse + MiniKit
+    const storedWalletAddress = localStorage.getItem('walletAddress');
+    if (!storedWalletAddress) {
+      setNotification({ show: true, message: 'No wallet address found. Connect first.', type: 'error' });
+      setIsLoading(false);
+      return;
+    }
+    if (!MiniKit.isInstalled()) {
+      setNotification({ show: true, message: 'World App / MiniKit not detected', type: 'error' });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // 2) Appel backend pour récupérer voucher signé + montant réel
+      const { data } = await axios.post(
+        `${BACKEND_URL}/api/airdrop/request`,
+        {},                                           // rien à envoyer
+        {
+          withCredentials: true,
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization  : `Bearer ${token}`        // ← IMPORTANT : authentification
+          },
+          timeout: API_TIMEOUT,
+          validateStatus: () => true,
+        }
+      );
+
+      if (data.error) {
+        setNotification({ show: true, message: `Airdrop error: ${data.error}`, type: 'error' });
+        return;
+      }
+
+      const { voucher, signature, claimedAmount } = data;
+      // claimedAmount = montant hors-chaîne (décimales déjà retirées)
+
+      // 3) Encodage voucher pour le SC
+      const voucherArgs = encodeVoucher({
+        to      : voucher.to,
+        amount  : voucher.amount,
+        nonce   : voucher.nonce,
+        deadline: voucher.deadline,
+      });
+
+      // 4) Transaction MiniKit
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
+          {
+            address      : '0x36a4E57057f9EE65d5b26bfF883b62Ad47D4B775',
+            abi          : distributorAbi,
+            functionName : 'claim',
+            args         : [voucherArgs, signature],
+          },
+        ],
+      });
+
+      if (finalPayload.status === 'error') {
+        setNotification({ show: true, message: `Transaction error: ${finalPayload.message}`, type: 'error' });
+      } else {
+        setNotification({
+          show: true,
+          message: `🎉 ${claimedAmount} UMI on the way to your wallet!`,
+          type: 'success'
+        });
+
+        // 5) Mise à jour UI (balance hors-chaîne tombe à 0)
+        setTimeout(() => setUmiBalance(0), 2000);          // on remet le claimable à zéro
+setTimeout(async () => {                           // on recharge le solde on-chain
+  const onChain = await fetchTokenBalance();
+  if (onChain !== null) setWalletBalance(onChain);
+}, 7000);      }
+    } catch (err) {
+      console.error('Claim error:', err);
+      setNotification({ show: true, message: 'An error occurred while claiming.', type: 'error' });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 5000);
+    }
+  };
 
   // Fonction pour ouvrir le groupe Telegram
   const openTelegramGroup = () => {
@@ -228,14 +319,11 @@ const RewardsHub = () => {
           }
           
           // Utiliser le tokenBalance de la BDD
-          if (data.tokenBalance !== undefined && data.tokenBalance !== null) {
-            console.log(`[RewardsHub] Récupération du tokenBalance BDD: ${data.tokenBalance}`);
-            setUmiBalance(parseFloat(data.tokenBalance));
-          } else {
-            console.warn('[RewardsHub] tokenBalance non trouvé dans la réponse /auth/me, initialisation à 0.');
-            setUmiBalance(0); // Fallback si non présent
-          }
-          
+if (data.tokenBalance !== undefined && data.tokenBalance !== null) {
+    setUmiBalance(parseFloat(data.tokenBalance));
+  } else {
+    setUmiBalance(0);          // rien à claim
+  }          
           // Set human verification status
           if (data.verified === true) {
             setIsHumanVerified(true);
@@ -246,10 +334,10 @@ const RewardsHub = () => {
           if (data.socialVerifications) {
             setSocialVerifications(data.socialVerifications);
             console.log("Réseaux sociaux vérifiés:", data.socialVerifications);
-    // Log plus détaillé pour chaque réseau social
-    console.log("Twitter vérifiéyes:", data.socialVerifications.twitter?.verified || false);
-    console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
-    console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
+            // Log plus détaillé pour chaque réseau social
+            console.log("Twitter vérifié:", data.socialVerifications.twitter?.verified || false);
+            console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
+            console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
           }
           if (data.social?.twitter?.profileImageUrl) {
             setProfileImage(data.social.twitter.profileImageUrl);
@@ -277,6 +365,16 @@ const RewardsHub = () => {
       setIsLoading(false);
     }
   }, []);
+
+  // ➜ charge la balance on-chain au premier rendu ET à chaque changement d’adresse
+useEffect(() => {
+  (async () => {
+    if (!walletAddress) return;
+    const chainBal = await fetchTokenBalance(walletAddress);
+    if (chainBal !== null) setWalletBalance(chainBal);
+  })();
+}, [walletAddress]);
+
   
   // Live counter effect: increment liveCounter each second up to todaysReward
   useEffect(() => {
@@ -390,6 +488,47 @@ const RewardsHub = () => {
       setIsLoading(false);
     }
   };
+
+  /**
+ * Récupère le solde on-chain du token UMI pour l’adresse passée
+ * 1️⃣ on essaye via l’endpoint backend /users/token-balance
+ * 2️⃣ si le backend n’est pas dispo, fallback direct on-chain avec ethers + MiniKit/Metamask
+ */
+const fetchTokenBalance = async (address = walletAddress) => {
+  try {
+    if (!address) return null;
+
+    // ---- Méthode 1 : appel API (public, accepte ou non le JWT) ----
+    const apiRes = await axios.get(
+      `${API_BASE_URL}/users/token-balance/${address}`,
+      token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+    );
+
+    if (apiRes?.data?.status === 'success') {
+      return parseFloat(apiRes.data.balance);
+    }
+
+    // ---- Méthode 2 : lecture direct on-chain ----
+    // MiniKit injecte un provider EIP-1193 compatible (<window.ethereum> ou <MiniKit.ethereum>)
+    const injected = window?.MiniKit?.ethereum || window.ethereum;
+    const provider = injected
+      ? new BrowserProvider(injected)          // ethers v6
+      : ethers.getDefaultProvider();           // public fallback (faible quota)
+
+    const contract = new Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
+
+    const [rawBalance, decimals] = await Promise.all([
+      contract.balanceOf(address),
+      contract.decimals()
+    ]);
+
+    return parseFloat(formatUnits(rawBalance, decimals));
+  } catch (err) {
+    console.error('❌ Erreur balance UMI :', err);
+    return null;
+  }
+};
+
   
   // Function to refresh token balance manually
   const refreshTokenBalance = async () => {
@@ -414,6 +553,14 @@ const RewardsHub = () => {
     //     type: 'error'
     //   });
     // }
+
+    const bal = await fetchTokenBalance();
+     if (bal !== null) {
+        setWalletBalance(bal);
+       setNotification({ show: true, message: `Balance updated: ${bal.toFixed(2)} UMI`, type: 'success' });
+     } else {
+       setNotification({ show: true, message: 'Failed to refresh balance', type: 'error' });
+     }
     
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'info' });
@@ -486,45 +633,34 @@ const RewardsHub = () => {
   };
   
   return (
-      <div className="rewards-hub">
+    <div className="rewards-hub">
       <div className="background"></div>
       <div className="content-container">
-        {/* Top Navigation - Now with Balance */}
+        {/* Top Navigation - Redesigned */}
         <header>
           <div className="top-nav">
-            {/* <div className="back-button" onClick={handleBack}>
-              <ChevronLeft size={20} />
-            </div> */}
-            <div className="nav-right">
-              {/* Improved balance display */}
-              <div className="balance-display">
-                <div className="balance-text">
-                  <span className="balance-label">Balance:</span>
-                  {isLoading ? (
-                    <span className="balance-value">Loading...</span>
-                  ) : (
-                    <span className="balance-value">
-                      {umiBalance !== null ? 
-                        `${parseFloat(umiBalance).toFixed(2)} UMI` : 
-                        'N/A'}
-                    </span>
-                  )}
-                </div>
+            <div className="balance-display">
+              <div className="balance-text">
+                <span className="balance-label">Balance:</span>
+                <span className="balance-value">
+                {isLoading ? 'Loading…' :
+   walletBalance !== null ? `${walletBalance.toFixed(2)} UMI` : 'N/A'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Social Links moved to top right */}
+            <div className="social-links">
+              {/* Telegram button */}
+              <div className="social-btn telegram-btn" onClick={openTelegramGroup}>
+                <FaTelegramPlane size={18} />
+                <span>Join Us</span>
               </div>
               
-              {/* Social Links Container */}
-              <div className="social-links">
-                {/* Bouton Telegram */}
-                <div className="telegram-link" onClick={openTelegramGroup}>
-                  <FaTelegramPlane size={18} />
-                  <span className="telegram-text">Join Us</span>
-                </div>
-                
-                {/* Nouveau: Bouton X */}
-                <div className="x-link" onClick={openXProfile}>
-                  <FaX />
-                  <span className="x-text">Join Us</span>
-                </div>
+              {/* X button */}
+              <div className="social-btn x-btn" onClick={openXProfile}>
+                <FaX />
+                <span>Join Us</span>
               </div>
             </div>
           </div>
@@ -557,137 +693,150 @@ const RewardsHub = () => {
           
           {/* Social verification badges */}
           <div className="social-badges">
-          {socialVerifications.telegram?.verified && (
-              <span className="social-badge" style={{ backgroundColor: 'rgba(0,136,255,0.2)', color: '#0088CC' }}>
+            {socialVerifications.telegram?.verified && (
+              <span className="social-badge telegram-badge">
                 <FaTelegramPlane /> Telegram
               </span>
             )}
             
             {socialVerifications.discord?.verified && (
-              <span className="social-badge" style={{ backgroundColor: 'rgba(88,101,242,0.2)', color: '#5865F2' }}>
+              <span className="social-badge discord-badge">
                 <FaDiscord /> Discord
               </span>
             )}
             {socialVerifications.twitter?.verified && (
-              <span className="social-badge" style={{ backgroundColor: 'rgba(0,0,0,0.2)', color: 'black' }}>
+              <span className="social-badge twitter-badge">
                 <FaX /> 
               </span>
             )}
           </div>
         </div>
         
-        {/* MODIFIED: Daily login progress bar with integrated counter and combo */}
+        {/* STREAK CONTAINER */}
         <div className="streak-container">
-          <div className="stats-card streak-stats">
-            <div className="progress-container">
-              <div className="progress-stats">
-                <span className="progress-text">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" className="fire-icon">
-                    <path d="M12 23c-4.9 0-9-4.1-9-9 0-3.5 1.5-6 4.4-8.6.3-.3.7-.4 1-.2.3.2.5.5.5.9 0 1.2.5 2.3 1.4 3 .2.2.5.2.8.1.2-.1.4-.4.4-.7V4c0-1.1.9-2 2-2h.5c3.9.6 6.9 4 6.9 8 0 1.7-1.3 3-3 3h-1.8c-.8 0-1.6.4-2.2 1s-.7 1.4-.6 2.2c.2 1.5 1.4 2.5 3 2.5.8 0 1.6-.4 2.1-1.1.8-1.2 2.4-1.5 3.5-.6.5.4.8 1 .8 1.6 0 3.3-3.8 6-9.2 6zm2.5-10.5c0 .3-.2.5-.5.5h-4c-.3 0-.5-.2-.5-.5s.2-.5.5-.5h4c.3 0 .5.2.5.5z"/>
-                  </svg>
-                  Daily Login
-                </span>
-                <div className="streak-info">
-                  {isLoading ? (
-                    <span className="progress-reward">Loading...</span>
-                  ) : (
-                    <>
-                      {currentStreak !== null && (
-                        <div className="streak-combo" title="Current streak">
-                          <span className="combo-multiplier">x{currentStreak}</span>
-                        </div>
-                      )}
-                      <span 
-                        className="progress-reward"
-                        onMouseEnter={() => setShowTooltip(true)} 
-                        onMouseLeave={() => setShowTooltip(false)}
-                      >
-                        Day {currentStreak || 0}
-                        {showTooltip && currentStreak !== null && todaysReward !== null && (
-                          <div className="streak-tooltip">
-                            Tomorrow Day {currentStreak + 1}! +{Math.min((currentStreak + 1), 5) * 10} UMI
-                          </div>
-                        )}
-                      </span>
-                    </>
-                  )}
-                </div>
+  <div className="streak-card">
+    <div className="streak-header">
+      <span className="streak-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" className="fire-icon">
+          <path d="M12 23c-4.9 0-9-4.1-9-9 0-3.5 1.5-6 4.4-8.6.3-.3.7-.4 1-.2.3.2.5.5.5.9 0 1.2.5 2.3 1.4 3 .2.2.5.2.8.1.2-.1.4-.4.4-.7V4c0-1.1.9-2 2-2h.5c3.9.6 6.9 4 6.9 8 0 1.7-1.3 3-3 3h-1.8c-.8 0-1.6.4-2.2 1s-.7 1.4-.6 2.2c.2 1.5 1.4 2.5 3 2.5.8 0 1.6-.4 2.1-1.1.8-1.2 2.4-1.5 3.5-.6.5.4.8 1 .8 1.6 0 3.3-3.8 6-9.2 6zm2.5-10.5c0 .3-.2.5-.5.5h-4c-.3 0-.5-.2-.5-.5s.2-.5.5-.5h4c.3 0 .5.2.5.5z"/>
+        </svg>
+        Daily Login
+      </span>
+      <div className="streak-info">
+        {isLoading ? (
+          <span className="streak-value">Loading...</span>
+        ) : (
+          <>
+            {currentStreak !== null && (
+              <div className="streak-badge" title="Current streak">
+                <span className="streak-multiplier">x{currentStreak}</span>
               </div>
-              
-              <div className="progress-bar-container">
-                <div className="progress-bar-bg">
-                  {isLoading ? (
-                    <div className="progress-bar-loading"></div>
-                  ) : (
-                    <div 
-                      className="progress-bar-fill" 
-                      style={{ 
-                        width: currentStreak !== null ? 
-                          `${Math.min(currentStreak, 5) / 5 * 100}%` : 
-                          '0%'
-                      }}
-                    ></div>
-                  )}
-                </div>
-                
-                {/* Integrated live counter with earning animation */}
-                {firstLoginOfDay && todaysReward != null && (
-                  <div className="earnings-display">
-                    <div className="earnings-value">
-                      <span className="earnings-number">{liveCounter.toFixed(4)}</span>
-                      <span className="earnings-currency">UMI</span>
-                    </div>
-                    <div className="earnings-label">
-                      Earning now
-                      <div className="pulse-dot"></div>
-                    </div>
+            )}
+            <span className="streak-value">
+              Day {currentStreak || 0}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
+    
+    <div className="progress-bar-container">
+      <div className="progress-bar-bg">
+        {isLoading ? (
+          <div className="progress-bar-loading"></div>
+        ) : (
+          <div 
+            className="progress-bar-fill" 
+            style={{ 
+              width: currentStreak !== null ? 
+                `${Math.min(currentStreak, 5) / 5 * 100}%` : 
+                '0%'
+            }}
+          ></div>
+        )}
+      </div>
+      
+      {/* Live token earnings counter */}
+      {firstLoginOfDay && todaysReward != null && (
+        <div className="earnings-display">
+          <div className="earnings-value">
+            <span className="earnings-number">{liveCounter.toFixed(4)}</span>
+            <span className="earnings-currency">UMI</span>
+          </div>
+          <div className="earnings-label">
+            Earning now
+            <div className="pulse-dot"></div>
+          </div>
+        </div>
+      )}
+    </div>
+    
+    {/* Ajout du message d'encouragement pour le streak - version minimaliste */}
+    {!isLoading && currentStreak !== null && (
+      <div className="streak-message">
+        {currentStreak < 5 ? (
+          <span>Come back tomorrow for <span className="highlight">x{currentStreak + 1}</span> more tokens</span>
+        ) : (
+          <span>Come back tomorrow to maintain streak</span>
+        )}
+      </div>
+    )}
+  </div>
+</div>
+
+        
+        {/* Claim Button - Moved below daily login and redesigned to be more minimalist */}
+       
+{/* Claim Button - More visible while maintaining minimalism */}
+<div className="claim-container">
+  <button
+    className="claim-button"
+    disabled={isLoading || !umiBalance}
+    onClick={claimTokens}
+  >
+    {isLoading ? (
+      <span className="claim-text">Loading...</span>
+    ) : !umiBalance ? (
+      <span className="claim-text">No more UMI to grab</span>
+    ) : (
+      <div className="claim-content">
+        <span className="claim-text">Grab</span>
+        <span className="claim-amount">{parseFloat(umiBalance).toFixed(2)} earned UMI</span>
+      </div>
+    )}
+  </button>
+</div>
+        
+        {/* REFERRAL CODE SECTION - MINIMALIST */}
+        <div className="referral-section">
+          <div className="referral-card">
+            <div className="referral-content">
+              <span className="referral-label">Invite friends & earn 20 UMI</span>
+              <div className="code-container" onClick={copyReferralCode}>
+                {isLoading ? (
+                  <span className="loading-code">Loading...</span>
+                ) : (
+                  <div className="referral-code-wrapper">
+                    <span className="code-value">{referralCode || 'Not available'}</span>
+                    <span className={`copy-icon ${justCopied ? 'copied' : ''}`}>
+                      {justCopied ? <Check size={14} /> : <Copy size={14} />}
+                    </span>
                   </div>
                 )}
-                
-                {/* NOUVEAU: Notification de réclamation UMI à venir */}
-                <div className="claim-soon-notification">
-                  <div className="claim-soon-icon">
-                    <Clock size={14} />
-                  </div>
-                  <span className="claim-soon-text">UMI token claiming coming soon!</span>
-                </div>
               </div>
             </div>
           </div>
         </div>
         
-        {/* REFERRAL CODE SECTION - REDESIGNED */}
-        <div className="referral-section">
-          <div className="mini-card">
-            <div className="referral-content">
-              <div className="referral-text">
-                <span className="referral-label">Invite friends & earn 20 UMI</span>
-                <div className="code-container" onClick={copyReferralCode}>
-                  {isLoading ? (
-                    <span className="loading-code">Loading...</span>
-                  ) : (
-                    <div className="referral-code-wrapper">
-                      <span className="code-value">{referralCode || 'Not available'}</span>
-                      <span className={`copy-icon ${justCopied ? 'copied' : ''}`}>
-                        {justCopied ? <Check size={14} /> : <Copy size={14} />}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* CHALLENGES SECTION WITH TEMPORARY MESSAGE */}
-        <div className="tab-section challenges-section w-full overflow-hidden">
+        {/* CHALLENGES SECTION - MINIMALIST */}
+        <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
           </div>
           
           <div className="coming-soon-container">
             <div className="coming-soon-icon">
-              <Award size={32} />
+              <Award size={28} />
             </div>
             <h3 className="coming-soon-title">Coming Soon!</h3>
             <p className="coming-soon-text">Complete challenges and earn UMI</p>
@@ -742,79 +891,30 @@ const RewardsHub = () => {
         }
         
         .content-container {
-          /* Constrain container width and center */
           width: 100%;
           max-width: 400px;
           margin: 0 auto;
           padding: 1rem 1rem 4rem 1rem;
         }
         
-        /* Top Navigation */
+        /* REDESIGNED: Top Navigation with social links in top right */
         .top-nav {
           display: flex;
           align-items: center;
           justify-content: space-between;
           margin-bottom: 1.5rem;
+          height: 48px;
         }
         
-        .back-button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background-color: rgba(241, 100, 3, 0.1);
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .back-button:hover {
-          background-color: rgba(241, 100, 3, 0.2);
-        }
-        
-        .page-title {
-          font-size: 1.2rem;
-          font-weight: 600;
-          color: #303421;
-        }
-        
-        /* New: Right navigation with mini-balance and avatar */
-        .nav-right {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        
-        /* Social links container */
-        .social-links {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        
-        /* Improved balance display */
+        /* Balance display - minimalist */
         .balance-display {
-            display: flex;
-            align-items: center;
-            gap: 4px; /* Réduit de 6px à 4px */
-            background-color: rgba(241, 100, 3, 0.08);
-            border: 1px solid rgba(241, 100, 3, 0.15);
-            border-radius: 6px; /* Réduit de 8px à 6px */
-            padding: 0.25rem 0.5rem; /* Réduit de 0.4rem 0.7rem */
-            transition: all 0.2s ease;
-        }
-        
-        .balance-display:hover {
-          background-color: rgba(241, 100, 3, 0.12);
-          transform: translateY(-1px);
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .balance-icon {
-          color: #f28011;
           display: flex;
           align-items: center;
+          background-color: rgba(241, 100, 3, 0.08);
+          border: 1px solid rgba(241, 100, 3, 0.15);
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
+          transition: all 0.2s ease;
         }
         
         .balance-text {
@@ -833,61 +933,54 @@ const RewardsHub = () => {
           font-size: 0.85rem;
           font-weight: 600;
           color: #303421;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
         }
         
-        .refresh-balance-button {
-          background: none;
-          border: none;
-          color: #f28011;
+        /* Social links - moved to top right */
+        .social-links {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .social-btn {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          border-radius: 6px;
+          padding: 0.25rem 0.5rem;
           cursor: pointer;
-          padding: 2px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
           transition: all 0.2s;
-          margin-left: auto;
-          opacity: 0.7;
+          font-weight: 500;
         }
         
-        .refresh-balance-button:hover {
-          opacity: 1;
-          background-color: rgba(241, 100, 3, 0.1);
+        .social-btn span {
+          font-size: 0.8rem;
+          line-height: 1;
         }
         
-        .user-avatar {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background-color: rgba(241, 100, 3, 0.1);
-          color: #f28011;
+        .telegram-btn {
+          background-color: rgba(0, 136, 204, 0.08);
+          border: 1px solid rgba(0, 136, 204, 0.2);
+          color: #0088cc;
         }
         
-        /* MODIFIED: New progress container styles inspired by SocialConnect */
-        .streak-container {
-          margin-bottom: 1.5rem;
-          width: 100%;
-          animation: fadeIn 0.6s ease-out;
+        .telegram-btn:hover {
+          background-color: rgba(0, 136, 204, 0.15);
+          transform: translateY(-1px);
         }
         
-        .stats-card {
-          width: 100%;
-          background: rgba(241, 100, 3, 0.03);
-          border-radius: 16px;
-          padding: 1rem 1.2rem;
-          border: 1px solid rgba(241, 100, 3, 0.1);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-          position: relative;
-          overflow: hidden;
+        .x-btn {
+          background-color: rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0, 0, 0, 0.15);
+          color: #000000;
         }
         
-        /* New profile container styles */
+        .x-btn:hover {
+          background-color: rgba(0, 0, 0, 0.1);
+          transform: translateY(-1px);
+        }
+        
+        /* Profile container */
         .profile-container {
           margin-bottom: 1.5rem;
           width: 100%;
@@ -895,45 +988,17 @@ const RewardsHub = () => {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 1rem;
-          padding: 1rem 0;
-        }
-        
-        /* Added profile header for username and human badge */
-        .profile-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          justify-content: center;
-        }
-        
-        /* Human verification badge */
-        .human-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          padding: 0.25rem 0.5rem;
-          background-color: rgba(241, 100, 3, 0.1);
-          border: 1px solid rgba(241, 100, 3, 0.2);
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #f28011;
-          animation: fadeIn 0.6s ease-out;
-        }
-        
-        .human-badge span {
-          line-height: 1;
+          gap: 0.8rem;
+          padding: 0.5rem 0;
         }
         
         .profile-image-container {
-          width: 100px;
-          height: 100px;
+          width: 90px;
+          height: 90px;
           border-radius: 50%;
           overflow: hidden;
           border: 2px solid #f28011;
           box-shadow: 0 4px 12px rgba(241, 100, 3, 0.2);
-          margin-bottom: 0.5rem;
           position: relative;
         }
         
@@ -953,6 +1018,13 @@ const RewardsHub = () => {
           color: #f28011;
         }
         
+        .profile-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          justify-content: center;
+        }
+        
         .profile-username {
           font-size: 1.2rem;
           font-weight: 600;
@@ -961,20 +1033,137 @@ const RewardsHub = () => {
           text-align: center;
         }
         
-        /* MODIFIED: Updated progress container with integrated counter */
-        .progress-container {
-          width: 100%;
-          animation: fadeIn 0.6s ease-out;
+        /* Human verification badge */
+        .human-badge {
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.25rem 0.5rem;
+          background-color: rgba(241, 100, 3, 0.1);
+          border: 1px solid rgba(241, 100, 3, 0.2);
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: #f28011;
         }
         
-        .progress-stats {
+        .human-badge span {
+          line-height: 1;
+        }
+        
+        /* Social verification badges */
+        .social-badges {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+        
+        .social-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+        }
+        
+        .telegram-badge {
+          background-color: rgba(0, 136, 255, 0.1);
+          color: #0088CC;
+          border: 1px solid rgba(0, 136, 255, 0.2);
+        }
+        
+        .discord-badge {
+          background-color: rgba(88, 101, 242, 0.1);
+          color: #5865F2;
+          border: 1px solid rgba(88, 101, 242, 0.2);
+        }
+        
+        .twitter-badge {
+          background-color: rgba(0, 0, 0, 0.1);
+          color: black;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        
+        /* NEW MINIMALIST CLAIM BUTTON */
+        .minimalist-claim-container {
+          display: flex;
+          justify-content: center;
+          width: 100%;
+          margin-bottom: 1.5rem;
+          padding: 0;
+        }
+        
+        .minimalist-claim-button {
+          background-color: rgba(241, 100, 3, 0.08);
+          color: #f16403;
+          border: 1px solid rgba(241, 100, 3, 0.2);
+          border-radius: 8px;
+          padding: 0.6rem 1rem;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        
+        .minimalist-claim-content {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        
+        .minimalist-claim-button:hover {
+          background-color: rgba(241, 100, 3, 0.12);
+        }
+        
+        .minimalist-claim-button:active {
+          background-color: rgba(241, 100, 3, 0.15);
+        }
+        
+        .minimalist-claim-button:disabled {
+          background-color: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
+          color: rgba(0, 0, 0, 0.3);
+          cursor: not-allowed;
+        }
+        
+        .minimalist-claim-icon {
+          color: #f16403;
+        }
+        
+        .minimalist-claim-text {
+          font-weight: 500;
+        }
+        
+        /* STREAK CONTAINER - MINIMALIST */
+        .streak-container {
+          margin-bottom: 1rem;
+          width: 100%;
+        }
+        
+        .streak-card {
+          background: rgba(241, 100, 3, 0.03);
+          border-radius: 12px;
+          padding: 1rem;
+          border: 1px solid rgba(241, 100, 3, 0.1);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+        
+        .streak-header {
           display: flex;
           justify-content: space-between;
           margin-bottom: 0.5rem;
           align-items: center;
         }
         
-        .progress-text {
+        .streak-title {
           font-size: 0.85rem;
           font-weight: 500;
           color: #303421;
@@ -983,23 +1172,13 @@ const RewardsHub = () => {
           gap: 0.4rem;
         }
         
-        /* New streak info layout */
         .streak-info {
           display: flex;
           align-items: center;
           gap: 0.5rem;
         }
         
-        .progress-reward {
-          font-size: 0.8rem;
-          color: #f28011;
-          font-weight: 500;
-          position: relative;
-          cursor: help;
-        }
-        
-        /* New streak combo badge */
-        .streak-combo {
+        .streak-badge {
           background: rgba(241, 100, 3, 0.6);
           border-radius: 6px;
           padding: 0.15rem 0.4rem;
@@ -1010,24 +1189,19 @@ const RewardsHub = () => {
           overflow: hidden;
         }
         
-        .streak-combo::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0));
-          z-index: 1;
-        }
-        
-        .combo-multiplier {
+        .streak-multiplier {
           color: white;
           font-weight: 600;
           font-size: 0.75rem;
           position: relative;
           z-index: 2;
           text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        }
+        
+        .streak-value {
+          font-size: 0.8rem;
+          color: #f28011;
+          font-weight: 500;
         }
         
         .progress-bar-container {
@@ -1053,26 +1227,6 @@ const RewardsHub = () => {
           z-index: 2;
         }
         
-        .progress-bar-fill::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(90deg, 
-            rgba(255,255,255,0) 0%, 
-            rgba(255,255,255,0.15) 50%, 
-            rgba(255,255,255,0) 100%);
-          animation: shimmer 1.5s infinite;
-          z-index: 3;
-        }
-        
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        
         .progress-bar-loading {
           height: 100%;
           width: 30%;
@@ -1087,37 +1241,7 @@ const RewardsHub = () => {
           100% { left: 100%; }
         }
         
-        .fire-icon {
-          color: #f28011;
-        }
-        
-        .streak-tooltip {
-          position: absolute;
-          top: -40px;
-          right: 0;
-          background: #303421;
-          padding: 0.5rem 0.75rem;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          white-space: nowrap;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-          z-index: 100;
-          color: white;
-        }
-        
-        .streak-tooltip:after {
-          content: '';
-          position: absolute;
-          bottom: -6px;
-          right: 10px;
-          width: 0;
-          height: 0;
-          border-left: 6px solid transparent;
-          border-right: 6px solid transparent;
-          border-top: 6px solid #303421;
-        }
-        
-        /* NEW: Earnings Display */
+        /* Earnings display */
         .earnings-display {
           margin-top: 0.75rem;
           display: flex;
@@ -1128,12 +1252,6 @@ const RewardsHub = () => {
           border-radius: 10px;
           padding: 0.6rem 0.8rem;
           transition: all 0.3s;
-          animation: gentle-highlight 3s infinite alternate;
-        }
-        
-        @keyframes gentle-highlight {
-          0% { box-shadow: 0 0 0 rgba(241, 100, 3, 0.1); }
-          100% { box-shadow: 0 0 8px rgba(241, 100, 3, 0.3); }
         }
         
         .earnings-value {
@@ -1143,20 +1261,13 @@ const RewardsHub = () => {
         }
         
         .earnings-number {
-          font-size: 1.3rem;
+          font-size: 1.2rem;
           font-weight: 700;
           color: #f16403;
-          animation: pulse-number 2s infinite;
-        }
-        
-        @keyframes pulse-number {
-          0% { opacity: 0.9; }
-          50% { opacity: 1; }
-          100% { opacity: 0.9; }
         }
         
         .earnings-currency {
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           font-weight: 600;
           color: rgba(241, 100, 3, 0.8);
         }
@@ -1171,8 +1282,8 @@ const RewardsHub = () => {
         }
         
         .pulse-dot {
-          width: 7px;
-          height: 7px;
+          width: 6px;
+          height: 6px;
           background-color: #f16403;
           border-radius: 50%;
           animation: pulse-dot 1.5s infinite;
@@ -1184,50 +1295,13 @@ const RewardsHub = () => {
           100% { transform: scale(0.7); opacity: 0.5; }
         }
         
-        /* NOUVEAU: Notification de réclamation UMI à venir */
-        .claim-soon-notification {
-          margin-top: 0.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(241, 100, 3, 0.04);
-          border: 1px dashed rgba(241, 100, 3, 0.15);
-          border-radius: 8px;
-          padding: 0.5rem 0.7rem;
-          transition: all 0.3s;
-          animation: gentle-fade 3s infinite alternate;
-        }
-        
-        @keyframes gentle-fade {
-          0% { opacity: 0.85; }
-          100% { opacity: 1; }
-        }
-        
-        .claim-soon-icon {
-          color: #f28011;
-          display: flex;
-          align-items: center;
-          animation: rotate 8s linear infinite;
-        }
-        
-        @keyframes rotate {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        
-        .claim-soon-text {
-          font-size: 0.75rem;
-          font-weight: 500;
-          color: #f28011;
-        }
-        
-        /* NEW: Minimalist Referral Section */
+        /* REFERRAL SECTION - MINIMALIST */
         .referral-section {
           margin-bottom: 1.5rem;
           width: 100%;
         }
         
-        .mini-card {
+        .referral-card {
           background: rgba(241, 100, 3, 0.03);
           border-radius: 12px;
           padding: 0.75rem 1rem;
@@ -1236,12 +1310,6 @@ const RewardsHub = () => {
         }
         
         .referral-content {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        
-        .referral-text {
           width: 100%;
         }
         
@@ -1299,91 +1367,73 @@ const RewardsHub = () => {
           color: rgba(48, 52, 33, 0.6);
         }
         
-        /* Tab Content */
-        .tab-content {
-          animation: fadeIn 0.4s ease-out;
+        /* CHALLENGES SECTION - MINIMALIST */
+        .challenges-section {
           width: 100%;
-        }
-
-        /* Common styles for all tab sections to ensure consistent sizing */
-        .tab-section {
-          width: 100%;
-          background: transparent;
-          border-radius: 16px;
+          background: rgba(241, 100, 3, 0.03);
+          border-radius: 12px;
           border: 1px solid rgba(241, 100, 3, 0.1);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
           margin-bottom: 1.5rem;
+          overflow: hidden;
         }
         
-        /* Section Headers */
         .section-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 1rem;
-          padding: 1rem 1rem 0 1rem;
+          padding: 0.75rem 1rem;
+          border-bottom: 1px solid rgba(241, 100, 3, 0.1);
         }
         
         .section-header h3 {
-          font-size: 1rem;
+          font-size: 0.9rem;
           font-weight: 500;
           color: #303421;
         }
         
-        /* Challenges Section */
-        .challenges-section {
-          padding-bottom: 1rem;
-        }
-        
-        /* Coming Soon Section */
         .coming-soon-container {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 2rem 1rem 3rem 1rem;
+          padding: 2rem 1rem;
           text-align: center;
         }
         
         .coming-soon-icon {
           color: #f28011;
-          margin-bottom: 1rem;
-          animation: pulse 2s infinite;
+          margin-bottom: 0.75rem;
+          opacity: 0.8;
         }
         
         .coming-soon-title {
-          font-size: 1.2rem;
+          font-size: 1.1rem;
           font-weight: 600;
           color: #303421;
-          margin-bottom: 0.5rem;
+          margin-bottom: 0.3rem;
         }
         
         .coming-soon-text {
-          font-size: 1rem;
+          font-size: 0.9rem;
           color: rgba(48, 52, 33, 0.7);
         }
         
-        @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
-        }
-        
-        /* Notification */
+        /* NOTIFICATION */
         .notification {
           position: fixed;
           bottom: 1.5rem;
           left: 50%;
           transform: translateX(-50%);
-          padding: 0.9rem 1.25rem;
-          border-radius: 12px;
+          padding: 0.75rem 1.25rem;
+          border-radius: 10px;
           font-size: 0.9rem;
           z-index: 1000;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           min-width: 200px;
           max-width: 90%;
           text-align: center;
-          animation: slideUp 0.4s ease;
+          animation: slideUp 0.3s ease;
         }
         
         .notification.success {
@@ -1401,7 +1451,7 @@ const RewardsHub = () => {
           color: white;
         }
         
-        /* Animations */
+        /* ANIMATIONS */
         @keyframes slideUp {
           from { opacity: 0; transform: translate(-50%, 20px); }
           to { opacity: 1; transform: translate(-50%, 0); }
@@ -1412,168 +1462,10 @@ const RewardsHub = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Style du bouton Telegram */
-        .telegram-link {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          background-color: rgba(0, 136, 204, 0.08);
-          border: 1px solid rgba(0, 136, 204, 0.2);
-          color: #0088cc;
-          border-radius: 6px;
-          padding: 0.25rem 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-weight: 500;
-        }
-        
-        .telegram-link:hover {
-          background-color: rgba(0, 136, 204, 0.15);
-          transform: translateY(-1px);
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .telegram-text {
-          font-size: 0.8rem;
-          line-height: 1;
-        }
-        
-        /* Style du bouton X (Twitter) */
-        .x-link {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          margin-top:0.65%;
-          background-color: rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(0, 0, 0, 0.15);
-          color: #000000;
-          border-radius: 6px;
-          padding: 0.25rem 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-weight: 500;
-          line-height: 1;
-        }
-        
-        .x-link:hover {
-          background-color: rgba(0, 0, 0, 0.1);
-          transform: translateY(-1px);
-          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        
-        .x-text {
-          font-size: 0.8rem;
-          line-height: 1;
-        }
-        
-        /* Social badges */
-        .social-badges {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-top: 0.5rem;
-        }
-        
-        .social-badge {
-          padding: 0.25rem 0.5rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.3rem;
-        }
-        
-        /* Dark mode support pour les boutons sociaux */
-        @media (prefers-color-scheme: dark) {
-          .rewards-hub {
-            background-color: #303421;
-            color: #f4e9b7;
-          }
-          
-          .background {
-            background-color: #303421;
-          }
-          
-          .streak-container,
-          .tabs-container,
-          .mini-card,
-          .tab-section,
-          .streak-stats {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-color: rgba(241, 100, 3, 0.2);
-          }
-          
-          .page-title,
-          .streak-title,
-          .section-header h3,
-          .coming-soon-title,
-          .progress-text,
-          .profile-username {
-            color: #f4e9b7;
-          }
-          
-          .progress-text,
-          .referral-label,
-          .coming-soon-text {
-            color: rgba(244, 233, 183, 0.7);
-          }
-          
-          .code-value {
-            color: #f28011;
-          }
-          
-          .human-badge {
-            background-color: rgba(241, 100, 3, 0.15);
-          }
-          
-          .earnings-display {
-            background: rgba(241, 100, 3, 0.1);
-            border-color: rgba(241, 100, 3, 0.2);
-          }
-          
-          .earnings-label {
-            color: rgba(244, 233, 183, 0.7);
-          }
-          
-          .claim-soon-notification {
-            background: rgba(241, 100, 3, 0.06);
-            border-color: rgba(241, 100, 3, 0.2);
-          }
-          
-          .claim-soon-text {
-            color: #f28011;
-          }
-          
-          .telegram-link {
-            background-color: rgba(0, 136, 204, 0.15);
-            border-color: rgba(0, 136, 204, 0.3);
-          }
-          
-          .telegram-link:hover {
-            background-color: rgba(0, 136, 204, 0.25);
-          }
-          
-          .x-link {
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-          }
-          
-          .x-link:hover {
-            background-color: rgba(255, 255, 255, 0.15);
-          }
-        }
-        
-        /* Support responsive pour les boutons sociaux */
+        /* RESPONSIVE STYLES */
         @media (max-width: 380px) {
           .content-container {
-            padding: 0.75rem;
-          }
-          
-          .mini-balance {
-            font-size: 0.8rem;
-            padding: 0.25rem 0.5rem;
+            padding: 0.75rem 0.75rem 4rem 0.75rem;
           }
           
           .profile-image-container {
@@ -1581,28 +1473,150 @@ const RewardsHub = () => {
             height: 80px;
           }
           
-          .earnings-number {
-            font-size: 1.1rem;
+          .minimalist-claim-container {
+            padding: 0;
           }
           
-          .claim-soon-text {
-            font-size: 0.7rem;
+          .minimalist-claim-button {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
           }
           
-          .telegram-text,
-          .x-text {
+          .social-btn span {
             display: none;
           }
           
-          .telegram-link,
-          .x-link {
+          .social-btn {
             padding: 0.25rem;
-          }
-          
-          .social-links {
-            gap: 5px;
+            border-radius: 4px;
           }
         }
+        
+        /* DARK MODE SUPPORT */
+        @media (prefers-color-scheme: dark) {
+          .rewards-hub, .background {
+            background-color: #303421;
+            color: #f4e9b7;
+          }
+          
+          .streak-card, .referral-card, .challenges-section {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(241, 100, 3, 0.2);
+          }
+          
+          .profile-username, .section-header h3, .coming-soon-title {
+            color: #f4e9b7;
+          }
+          
+          .streak-title, .referral-label, .coming-soon-text, .earnings-label {
+            color: rgba(244, 233, 183, 0.7);
+          }
+          
+          .x-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+          }
+          
+          .minimalist-claim-button {
+            background-color: rgba(241, 100, 3, 0.15);
+            border-color: rgba(241, 100, 3, 0.3);
+          }
+          
+          .minimalist-claim-button:hover {
+            background-color: rgba(241, 100, 3, 0.2);
+          }
+          
+          .minimalist-claim-button:disabled {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.3);
+          }
+        }
+            .claim-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 0.75rem 0 1.75rem 0;
+  }
+  
+  .claim-button {
+    background-color: #f28011;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(241, 100, 3, 0.2);
+  }
+  
+  .claim-button:hover {
+    background-color: #e07410;
+    box-shadow: 0 3px 5px rgba(241, 100, 3, 0.25);
+  }
+  
+  .claim-button:active {
+    background-color: #d56b0f;
+    box-shadow: 0 1px 3px rgba(241, 100, 3, 0.15);
+    transform: translateY(1px);
+  }
+  
+  .claim-button:disabled {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.35);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  
+  .claim-content {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  
+  .claim-text {
+    font-weight: 500;
+  }
+  
+  .claim-amount {
+    font-weight: 600;
+  }
+  
+  /* Dark mode support */
+  @media (prefers-color-scheme: dark) {
+    .claim-button:disabled {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.3);
+    }
+  }
+     .streak-message {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(48, 52, 33, 0.6);
+    text-align: center;
+    padding: 0.3rem 0;
+    transition: all 0.2s;
+  }
+  
+  .streak-message .highlight {
+    color: #f16403;
+    font-weight: 600;
+  }
+  
+  /* For dark mode */
+  @media (prefers-color-scheme: dark) {
+    .streak-message {
+      color: rgba(244, 233, 183, 0.6);
+    }
+  }
+
       `}</style>
     </div>
   );

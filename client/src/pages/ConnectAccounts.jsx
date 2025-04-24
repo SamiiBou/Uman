@@ -401,7 +401,7 @@ const ConnectAccounts = () => {
                 redirectUrl += `&token=${token}`;
               }
               
-              console.log(`URL de redirection finale: ${redirectUrl}`);
+              // console.log(`URL de redirection finale: ${redirectUrl}`);
               
               // Rediriger vers le fournisseur social après un court délai
               setTimeout(() => {

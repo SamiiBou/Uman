@@ -15,7 +15,6 @@ import createAuthRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import messageRoutes from './routes/message.js';
 
-// import { createVoucher } from "./voucher.js";
 
 
 // Import des modèles
@@ -23,6 +22,9 @@ import User from './models/User.js';
 
 // Charger les variables d'environnement depuis .env à la racine du projet
 import path from 'path';
+
+import airdropRoutes from './routes/airdrop.js'   
+
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +147,9 @@ app.use('/api/users', userRoutes);
 // Mount messaging API routes
 app.use('/api/messages', messageRoutes);
 console.log('[SERVER] Routes API configurées.');
+
+app.use('/api/airdrop', airdropRoutes)
+
 
 // Route de test simple
 app.get('/', (req, res) => {
