@@ -107,131 +107,160 @@ const RewardsHub = () => {
   const scrollContainerRef = useRef(null);
 
   /// Fonction pour réclamer des tokens - mise à jour
-const claimTokens = async () => {
-  setIsLoading(true);
-  setNotification({ show: true, message: 'Preparing claim…', type: 'info' });
-
-  // 1 ▸ Vérifs de base
-  const storedWalletAddress = localStorage.getItem('walletAddress');
-  if (!storedWalletAddress) {
-    setNotification({ show: true, message: 'Connect wallet first', type: 'error' });
-    setIsLoading(false);
-    return;
-  }
-  if (!MiniKit.isInstalled()) {
-    setNotification({ show: true, message: 'World App / MiniKit not detected', type: 'error' });
-    setIsLoading(false);
-    return;
-  }
-
-  try {
-    // 2 ▸ Demande du voucher
-    console.log('[claimTokens] Requesting voucher from backend…');
-    const askVoucher = async () =>
-          axios.post(`${BACKEND_URL}/api/airdrop/request`, {}, {
-            withCredentials: true,
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            timeout: API_TIMEOUT,
-            validateStatus: () => true,
-          });
-      
-        let { data } = await askVoucher();
-      
-        // Si le backend dit « claim already pending », on annule puis on ré-essaie
-        if (data.error?.startsWith('Claim already pending')) {
-          // On récupère le nonce actuel (renvoyé par la route /auth/me, ou fais une
-          // petite route /airdrop/status).  Supposons qu’on l’ait stocké dans
-          // data.pending.nonce :
-          const pendingNonce = data.pending?.nonce;
-          if (pendingNonce) {
-            await axios.post(`${BACKEND_URL}/api/airdrop/cancel`,
-              { nonce: pendingNonce },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            // puis on redemande un voucher
-            ({ data } = await askVoucher());
-          } else {
-            throw new Error('Claim pending but nonce not returned by the API');
-          }
-        }
-      
-    console.log('[claimTokens] /request response →', data);
-    if (data.error) throw new Error(data.error);
-
-    const { voucher, signature, claimedAmount } = data;
-    const voucherArgs = encodeVoucher(voucher);
-
-    // 3 ▸ Lancement de la TX via MiniKit
-    console.log('[claimTokens] Sending transaction via MiniKit…');
-    const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-      transaction: [
+  const claimTokens = async () => {
+    setIsLoading(true);
+    setNotification({ show: true, message: "Preparing claim…", type: "info" });
+  
+    /* ─────────────────────────────
+     * 0. Pré-vérifications
+     * ────────────────────────────*/
+    const storedWalletAddress = localStorage.getItem("walletAddress");
+    if (!storedWalletAddress) {
+      setNotification({ show: true, message: "Connect wallet first", type: "error" });
+      setIsLoading(false);
+      return;
+    }
+    if (!MiniKit.isInstalled()) {
+      setNotification({ show: true, message: "World App / MiniKit not detected", type: "error" });
+      setIsLoading(false);
+      return;
+    }
+  
+    /* ─────────────────────────────
+     * 1. Récupération du voucher
+     * ────────────────────────────*/
+    const postVoucher = () =>
+      axios.post(
+        `${BACKEND_URL}/api/airdrop/request`,
+        {},
         {
-          address: '0x36a4E57057f9EE65d5b26bfF883b62Ad47D4B775',
-          abi: distributorAbi,
-          functionName: 'claim',
-          args: [voucherArgs, signature],
-        },
-      ],
-    });
-    console.log('[claimTokens] MiniKit finalPayload →', finalPayload);
-
-    // 4 ▸ Si l’utilisateur a rejeté ou fermé la fenêtre
-    if (finalPayload.status === 'error') {
-      console.warn('[claimTokens] User rejected TX → cancelling on backend');
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: API_TIMEOUT,
+          validateStatus: () => true, // on gère nous-mêmes les codes ≠200
+        }
+      );
+  
+    let res = await postVoucher();
+    let { data } = res;
+  
+    // Cas particulier : “claim already pending…”
+    if (data.error?.startsWith("Claim already pending")) {
+      const pendingNonce = data.pending?.nonce;
+      if (!pendingNonce) {
+        setNotification({
+          show: true,
+          message: "Claim pending but backend did not return a nonce",
+          type: "error",
+        });
+        setIsLoading(false);
+        return;
+      }
       await axios.post(
         `${BACKEND_URL}/api/airdrop/cancel`,
-        { nonce: voucher.nonce },
+        { nonce: pendingNonce },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      throw new Error(finalPayload.message ?? 'User rejected');
+      res = await postVoucher();
+      data = res.data;
     }
-
-    // 5 ▸ Confirmation côté serveur (polling si pending)
-    const transaction_id = finalPayload.transaction_id;
-    console.log('[claimTokens] Confirming with backend…');
-    let attempts = 0;
-    for (;;) {
-      attempts += 1;
-      const resp = await axios.post(
-        `${BACKEND_URL}/api/airdrop/confirm`,
-        { nonce: voucher.nonce, transaction_id }, // ⚠️ même nom que côté backend
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          validateStatus: () => true,
-        }
-      );
-      console.log(`[claimTokens] /confirm status=${resp.status}`, resp.data);
-
-      if (resp.status === 200 && resp.data.ok) break; // ✅
-
-      if (resp.status === 202 && resp.data.status === 'pending') {
-        console.log(`[confirm] pending – retry in 5 s (try #${attempts})`);
-        setNotification({ show: true, message: 'Transaction pending, retrying…', type: 'info' });
-        await new Promise(r => setTimeout(r, 5000));
-        continue;
+  
+    /* ─────────────────────────────
+     * 2. Validation stricte de la réponse
+     * ────────────────────────────*/
+    if (res.status !== 200 || !data?.voucher) {
+      const msg = data?.error ?? `Unexpected status ${res.status}`;
+      setNotification({ show: true, message: msg, type: "error" });
+      setIsLoading(false);
+      return;
+    }
+  
+    const { voucher, signature, claimedAmount } = data;
+  
+    /* ─────────────────────────────
+     * 3. Construction des arguments
+     * ────────────────────────────*/
+    let voucherArgs: [string, string, string, string];
+    try {
+      voucherArgs = encodeVoucher(voucher);
+    } catch (err: any) {
+      // erreur « voucher manquant » ou structure invalide
+      setNotification({ show: true, message: err.message, type: "error" });
+      setIsLoading(false);
+      return;
+    }
+  
+    /* ─────────────────────────────
+     * 4. Envoi de la transaction
+     * ────────────────────────────*/
+    try {
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
+          {
+            address: "0x36a4E57057f9EE65d5b26bfF883b62Ad47D4B775",
+            abi: distributorAbi,
+            functionName: "claim",
+            args: [voucherArgs, signature],
+          },
+        ],
+      });
+  
+      if (finalPayload.status === "error") {
+        await axios.post(
+          `${BACKEND_URL}/api/airdrop/cancel`,
+          { nonce: voucher.nonce },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        throw new Error(finalPayload.message ?? "User rejected");
       }
-
-      throw new Error(resp.data.error || `Confirm failed (status ${resp.status})`);
+  
+      /* ─────────────────────────
+       * 5. Confirmation serveur
+       * ────────────────────────*/
+      const txId = finalPayload.transaction_id;
+      let attempts = 0;
+      for (;;) {
+        attempts += 1;
+        const resp = await axios.post(
+          `${BACKEND_URL}/api/airdrop/confirm`,
+          { nonce: voucher.nonce, transaction_id: txId },
+          { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
+        );
+  
+        if (resp.status === 200 && resp.data.ok) break;
+  
+        if (resp.status === 202 && resp.data.status === "pending") {
+          console.log(`[confirm] pending – retry in 5 s (try #${attempts})`);
+          await new Promise((r) => setTimeout(r, 5000));
+          continue;
+        }
+        throw new Error(resp.data.error || `Confirm failed (status ${resp.status})`);
+      }
+  
+      /* ─────────────────────────
+       * 6. Mise à jour UI
+       * ────────────────────────*/
+      setNotification({
+        show: true,
+        message: `✅ ${claimedAmount} UMI on the way!`,
+        type: "success",
+      });
+      setUmiBalance(0);
+      setTimeout(async () => {
+        const onChain = await fetchTokenBalance();
+        if (onChain !== null) setWalletBalance(onChain);
+      }, 6000);
+    } catch (err) {
+      setNotification({ show: true, message: err.message ?? "Claim failed", type: "error" });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setNotification({ show: false, message: "", type: "info" }), 5000);
     }
-
-    // 6 ▸ Mise à jour UI après succès
-    setNotification({ show: true, message: `✅ ${claimedAmount} UMI on the way!`, type: 'success' });
-    setUmiBalance(0);
-    // Recharge le solde on-chain un peu plus tard
-    setTimeout(async () => {
-      const onChain = await fetchTokenBalance();
-      if (onChain !== null) setWalletBalance(onChain);
-    }, 6000);
-
-  } catch (err) {
-    console.error('[claimTokens] Error:', err);
-    setNotification({ show: true, message: err.message ?? 'Claim failed', type: 'error' });
-  } finally {
-    setIsLoading(false);
-    setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 5000);
-  }
-};
-
+  };
+  
   
 
   // Fonction pour ouvrir le groupe Telegram
