@@ -832,7 +832,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
        
 {/* Claim Button - More visible while maintaining minimalism */}
 <div className="claim-container">
-  <button
+  {/* <button
     className="claim-button"
     disabled={isLoading || !umiBalance}
     onClick={claimTokens}
@@ -847,7 +847,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
         <span className="claim-amount">{parseFloat(umiBalance).toFixed(2)} earned UMI</span>
       </div>
     )}
-  </button>
+  </button> */}
 </div>
         
         {/* REFERRAL CODE SECTION - MINIMALIST */}
