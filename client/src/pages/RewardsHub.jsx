@@ -131,7 +131,7 @@ const RewardsHub = () => {
      * ────────────────────────────*/
     const postVoucher = () =>
       axios.post(
-        `${BACKEND_URL}/api/airdrop/request`,
+        `${BACKEND_URL}/airdrop/request`,
         {},
         {
           withCredentials: true,
@@ -160,7 +160,7 @@ const RewardsHub = () => {
         return;
       }
       await axios.post(
-        `${BACKEND_URL}/api/airdrop/cancel`,
+        `${BACKEND_URL}/airdrop/cancel`,
         { nonce: pendingNonce },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -210,7 +210,7 @@ const RewardsHub = () => {
   
       if (finalPayload.status === "error") {
         await axios.post(
-          `${BACKEND_URL}/api/airdrop/cancel`,
+          `${BACKEND_URL}/airdrop/cancel`,
           { nonce: voucher.nonce },
           { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -225,7 +225,7 @@ const RewardsHub = () => {
       for (;;) {
         attempts += 1;
         const resp = await axios.post(
-          `${BACKEND_URL}/api/airdrop/confirm`,
+          `${BACKEND_URL}/airdrop/confirm`,
           { nonce: voucher.nonce, transaction_id: txId },
           { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
         );
