@@ -793,7 +793,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
 <div className="claim-container">
   <button
     className="claim-button"
-    disabled={isLoading || !umiBalance}
+    disabled={true}
     onClick={claimTokens}
   >
     {isLoading ? (
