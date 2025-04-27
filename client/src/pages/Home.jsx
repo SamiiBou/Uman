@@ -33,6 +33,36 @@ const Home = () => {
   const [showTokenConfirmation, setShowTokenConfirmation] = useState(false);
   const [tokenAmount, setTokenAmount] = useState(10); // Par défaut 10 tokens de bienvenue
 
+
+  useEffect(() => {
+    const initMiniKitAndPermissions = async () => {
+      // Initialisation existante
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      setMiniKitInitialized(true);
+
+      // Ne demander la permission que si l'utilisateur ne l'a pas déjà accordée
+      const stored = localStorage.getItem('notification_permission_granted');
+      if (!stored && MiniKit.isInstalled()) {
+        const granted = await requestNotificationPermission();
+        if (granted) {
+          localStorage.setItem('notification_permission_granted', 'true');
+        } else {
+          localStorage.setItem('notification_permission_granted', 'false');
+        }
+      }
+    };
+
+    initMiniKitAndPermissions();
+
+    // Disable scrolling
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, []);
+  
   // Initialize MiniKit when component loads
   useEffect(() => {
     const initMiniKit = async () => {

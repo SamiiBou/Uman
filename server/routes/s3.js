@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as fs from 'fs';  // Importation correcte de fs pour ES modules
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getPresignedUrl, uploadToS3 } from '../aws.js';  // Ajuste le chemin si nécessaire
+import { getPresignedUrl, uploadToS3, getPresignedChallengeUrl, uploadToChallengeS3 } from '../aws.js';  // Ajuste le chemin si nécessaire
 import jwt from 'jsonwebtoken';
 
 
@@ -311,6 +311,37 @@ router.get('/test-image/:key', async (req, res) => {
   } catch (error) {
     console.error('Error retrieving image URL:', error);
     res.status(500).json({ message: 'Server error retrieving image' });
+  }
+});
+
+// Routes pour les images de défis (challenges)
+router.post('/challenge/upload', isAuthenticated, upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Aucun fichier fourni' });
+  }
+  const fileExtension = req.file.originalname.split('.').pop();
+  const username = req.user.username || req.user.id;
+  const key = `challenges/${username}_${uuidv4()}.${fileExtension}`;
+  try {
+    await uploadToChallengeS3(req.file.buffer, key, req.file.mimetype);
+    const url = await getPresignedChallengeUrl(key);
+    res.json({ key, url });
+  } catch (error) {
+    console.error('[S3] Erreur upload challenge S3:', error);
+    res.status(500).json({
+      message: 'Erreur serveur lors du téléchargement de l\'image de défi',
+      error: error.message
+    });
+  }
+});
+
+router.get('/challenge/image/:key', isAuthenticated, async (req, res) => {
+  try {
+    const url = await getPresignedChallengeUrl(req.params.key);
+    res.json({ url });
+  } catch (error) {
+    console.error('[S3] Erreur récupération URL challenge:', error);
+    res.status(500).json({ message: 'Erreur serveur de récupération de l\'image de défi', error: error.message });
   }
 });
 
