@@ -9,6 +9,24 @@ import UmiToken from './Umi_Token.png'; // Image du token UMI
 const BACKEND_URL = 'https://uman.onrender.com';
 const API_TIMEOUT = 15000;
 
+async function requestNotificationPermission() {
+  console.log('[notifications] requestNotificationPermission called');
+  try {
+    const payload = await MiniKit.commandsAsync.requestPermission({
+      permission: Permission.Notifications,
+    });
+    console.log('[notifications] requestPermission payload:', payload);
+    if (payload.status === 'success') {
+      console.log('[notifications] Permission granted');
+      return true;
+    }
+    console.warn('[notifications] Permission not granted, error code:', payload.error_code);
+  } catch (err) {
+    console.error('[notifications] Error in requestPermission():', err);
+  }
+  return false;
+}
+
 const Home = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -62,7 +80,7 @@ const Home = () => {
       document.documentElement.style.overflow = '';
     };
   }, []);
-  
+
   // Initialize MiniKit when component loads
   useEffect(() => {
     const initMiniKit = async () => {
