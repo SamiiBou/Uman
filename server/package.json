@@ -10,7 +10,7 @@
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
     "@google-cloud/storage": "^7.16.0",
-    "@worldcoin/minikit-js": "^1.8.0",
+    "@worldcoin/minikit-js": "^1.9.2",
     "axios": "^1.8.4",
     "cloudinary": "^2.6.0",
     "connect-mongo": "^5.1.0",
