@@ -598,10 +598,15 @@ const uploadIdCardToS3 = async (imageBlob) => {
                   <div className="lottery-pill-content">
                     {/* <Ticket size={14} className="lottery-icon" /> */}
                     <div className="lottery-text-container">
-                      <span className="lottery-text-highlight">Win 5 $WLD</span>
-                      <span className="lottery-text-info">Each week 10 verified users receive 5 $WLD</span>
-                      <span className="lottery-text-tip">Verify more accounts to increase your chances</span>
-                    </div>
+
+                      <span className="lottery-text-highlight">Grab&nbsp;5&nbsp;$WLD !</span>
+
+                      <span className="lottery-text-info">Every week, 10 lucky verified users pocket&nbsp;5&nbsp;$WLD</span>
+
+                      <span className="lottery-text-tip">Verify more accounts to boost your odds</span>
+
+                      </div>
+
                   </div>
                 </div>
               )}
@@ -844,10 +849,13 @@ const uploadIdCardToS3 = async (imageBlob) => {
           <div className="lottery-animation-container">
             <div className="lottery-glow"></div>
             {/* <Ticket size={30} className="lottery-main-icon" /> */}
-            <p className="lottery-main-message">Win 5 $WLD</p>
-            <p className="lottery-winners-message">Each week 10 verified users are selected</p>
-            <p className="lottery-sub-message">Verify your accounts to be eligible</p>
-            <p className="lottery-boost-message">More verified accounts = higher chances</p>
+            <p className="lottery-main-message">Grab&nbsp;5&nbsp;$WLD !</p>
+
+            <p className="lottery-winners-message">10 verified winners chosen weekly</p>
+
+            <p className="lottery-sub-message">Get verified now to enter the draw</p>
+
+            <p className="lottery-boost-message">More verifications&nbsp;=&nbsp;better odds</p>
           </div>
         </div>
       )}
