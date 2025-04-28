@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaTelegramPlane, FaDiscord, FaArrowLeft, FaCheckCircle, FaLock } from 'react-icons/fa';
 import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
-import { AlertCircle, ChevronLeft, Info, Gift, Shield, Coins, CheckCircle, Award } from "lucide-react";
+import { AlertCircle, ChevronLeft, Info, Gift, Shield, Coins, CheckCircle, Award, Ticket } from "lucide-react";
 import head from './head.png';
 import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
@@ -22,7 +22,7 @@ const FaX = () => (
   </svg>
 );
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api';
 
 const SocialConnect = () => {
   const navigate = useNavigate();
@@ -61,7 +61,9 @@ const SocialConnect = () => {
   const [isUploadingCard, setIsUploadingCard] = useState(false);
   const [s3CardUrl, setS3CardUrl] = useState(() => localStorage.getItem('s3CardUrl') || '');
   const [idCardS3Key, setIdCardS3Key] = useState(() => localStorage.getItem('idCardS3Key'));
-
+  
+  // New states for lottery animation
+  const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
 
   useEffect(() => {
     // si l'utilisateur a déjà un idCardS3Key et un token
@@ -76,7 +78,7 @@ const SocialConnect = () => {
         setIdCardImageUrl(data.url);
       })
       .catch(err => {
-        console.error("Erreur récupération presigned URL :", err);
+        console.error("Erreur récupération presigned URL :", err);
       });
     }
   }, [idCardS3Key, token]);
@@ -154,6 +156,18 @@ const SocialConnect = () => {
       });
     }
   }, []);
+
+  // Add lottery animation effect
+  useEffect(() => {
+    const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
+    if (linkedCount > 0 && linkedCount < 3) {
+      setShowLotteryAnimation(true);
+      const timer = setTimeout(() => {
+        setShowLotteryAnimation(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [connectedAccounts]);
 
   // MODIFICATION 2: Modified useEffect to avoid regenerating if S3 key exists
   useEffect(() => {
@@ -533,6 +547,9 @@ const uploadIdCardToS3 = async (imageBlob) => {
   const progressLabel   = `${linkedCount}/3 linked account`;
   const progressPercent = (linkedCount / 3) * 100;
   
+  // Calculate lottery tickets based on connected accounts
+  const lotteryTickets = linkedCount;
+  
   return (
     <div className="social-connect">
       <div className="background-gradient"></div>
@@ -574,6 +591,20 @@ const uploadIdCardToS3 = async (imageBlob) => {
                   ></div>
                 </div>
               </div>
+              
+              {/* Version améliorée et minimaliste de l'annonce de loterie */}
+              {!allLinked && (
+                <div className="lottery-pill" key={`lottery-${linkedCount}`}>
+                  <div className="lottery-pill-content">
+                    {/* <Ticket size={14} className="lottery-icon" /> */}
+                    <div className="lottery-text-container">
+                      <span className="lottery-text-highlight">Win 5 $WLD</span>
+                      <span className="lottery-text-info">Each week 10 verified users receive 5 $WLD</span>
+                      <span className="lottery-text-tip">Verify more accounts to increase your chances</span>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Total UMI earned indicator */}
               {totalUmiEarned > 0 && (
@@ -778,6 +809,16 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 </div>
               </div>
 
+              <div className="benefit-item">
+                <Ticket size={20} />
+                <div>
+                  <h4>Weekly Lottery Rewards</h4>
+                  <p>
+                    Each verified account gives you one lottery ticket. Every week, 10 verified humans win 5 $WLD each!
+                  </p>
+                </div>
+              </div>
+
               <button className="close-modal-button" onClick={toggleInfoModal}>
                 Got it
               </button>
@@ -788,6 +829,28 @@ const uploadIdCardToS3 = async (imageBlob) => {
         {/* Canvas élément caché pour générer l'image (pas visible à l'utilisateur) */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
+      
+      {/* Badge flottant simplifié */}
+      {!allLinked && linkedCount > 0 && (
+        <div className="lottery-ticket-badge-refined">
+          <Ticket size={14} />
+          <span>{lotteryTickets} lottery tickets</span>
+        </div>
+      )}
+      
+      {/* Animation marketing pour la loterie - style réduit et plus minimaliste */}
+      {showLotteryAnimation && (
+        <div className="lottery-animation-overlay">
+          <div className="lottery-animation-container">
+            <div className="lottery-glow"></div>
+            {/* <Ticket size={30} className="lottery-main-icon" /> */}
+            <p className="lottery-main-message">Win 5 $WLD</p>
+            <p className="lottery-winners-message">Each week 10 verified users are selected</p>
+            <p className="lottery-sub-message">Verify your accounts to be eligible</p>
+            <p className="lottery-boost-message">More verified accounts = higher chances</p>
+          </div>
+        </div>
+      )}
       
       {notification.show && (
         <div className={`notification ${notification.type}`}>
@@ -931,7 +994,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
             text-align: left !important;
           }
           
-          .progress-container, .human-id-card, .umi-earned-badge-minimal {
+          .progress-container, .human-id-card, .umi-earned-badge-minimal, .lottery-pill {
             width: 100%;
           }
         }
@@ -1007,7 +1070,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
           width: 100%;
           max-width: 290px; /* Réduit de 300px à 290px */
           margin-top: 0.4rem; /* Réduit de 0.5rem à 0.4rem */
-          margin-bottom: 0.4rem; /* Réduit de 0.5rem à 0.4rem */
+          margin-bottom: 0.6rem; /* Réduit */
           animation: fadeIn 0.6s ease-out 0.4s both;
         }
         
@@ -1042,6 +1105,180 @@ const uploadIdCardToS3 = async (imageBlob) => {
           background-color: #f28011;
           border-radius: 8px; /* Réduit de 10px à 8px */
           transition: width 0.4s ease-in-out;
+        }
+        
+        /* Nouvelle version minimaliste de l'annonce de loterie sous forme de pill */
+        .lottery-pill {
+          display: inline-flex;
+          max-width: 290px;
+          margin: 0.5rem auto 0.7rem;
+          animation: fadeIn 0.6s ease-out 0.5s both;
+        }
+
+        .lottery-pill-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          background-color: rgba(242, 128, 17, 0.08);
+          border: 1px solid rgba(242, 128, 17, 0.25);
+          border-radius: 10px;
+          padding: 0.7rem;
+        }
+
+        .lottery-icon {
+          color: #f28011;
+          flex-shrink: 0;
+          margin-top: 0.2rem;
+        }
+
+        .lottery-text-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .lottery-text-highlight {
+          color: #f28011;
+          font-size: 0.9rem;
+          font-weight: 600;
+        }
+
+        .lottery-text-info {
+          color: #303421;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .lottery-text-tip {
+          color: rgba(48, 52, 33, 0.8);
+          font-size: 0.7rem;
+          font-style: italic;
+        }
+
+        /* Badge flottant simplifié */
+        .lottery-ticket-badge-refined {
+          position: fixed;
+          bottom: 15px;
+          right: 15px;
+          background-color: #f4e9b7;
+          border: 1px solid rgba(242, 128, 17, 0.4);
+          color: #303421;
+          border-radius: 40px;
+          padding: 0.35rem 0.7rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.75rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+          z-index: 100;
+        }
+
+        .lottery-ticket-badge-refined svg {
+          color: #f28011;
+        }
+
+        /* Animation popup marketing améliorée */
+        .lottery-animation-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(48, 52, 33, 0.85);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          animation: fadeIn 0.3s ease-out;
+          backdrop-filter: blur(3px);
+        }
+
+        .lottery-animation-container {
+          background-color: #f4e9b7;
+          border: 1px solid rgba(242, 128, 17, 0.4);
+          border-radius: 12px;
+          padding: 1.8rem;
+          width: 90%;
+          max-width: 280px;
+          text-align: center;
+          position: relative;
+          overflow: hidden;
+          box-shadow: 0 10px 25px rgba(48, 52, 33, 0.3);
+          animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .lottery-glow {
+          position: absolute;
+          top: -50%;
+          left: -50%;
+          right: -50%;
+          bottom: -50%;
+          background: radial-gradient(circle, rgba(242, 128, 17, 0.2) 0%, rgba(242, 128, 17, 0) 70%);
+          transform: rotate(0deg);
+          animation: rotateGlow 15s linear infinite;
+          pointer-events: none;
+        }
+
+        .lottery-main-icon {
+          color: #f28011;
+          background-color: rgba(242, 128, 17, 0.1);
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          padding: 15px;
+          margin: 0 auto 1rem;
+          position: relative;
+          z-index: 2;
+          box-shadow: 0 5px 15px rgba(242, 128, 17, 0.2);
+        }
+
+        .lottery-main-message {
+          color: #f28011;
+          font-size: 1.4rem;
+          font-weight: 700;
+          margin: 0 0 0.5rem;
+          position: relative;
+          z-index: 2;
+        }
+        
+        .lottery-winners-message {
+          color: #303421;
+          font-size: 1rem;
+          font-weight: 600;
+          margin: 0 0 1rem;
+          position: relative;
+          z-index: 2;
+        }
+
+        .lottery-sub-message {
+          color: #303421;
+          font-size: 0.85rem;
+          margin: 0 0 0.5rem;
+          position: relative;
+          z-index: 2;
+          background-color: rgba(242, 128, 17, 0.1);
+          display: inline-block;
+          padding: 0.4rem 0.8rem;
+          border-radius: 20px;
+        }
+        
+        .lottery-boost-message {
+          color: rgba(48, 52, 33, 0.8);
+          font-size: 0.8rem;
+          font-style: italic;
+          margin: 0.5rem 0 0;
+          position: relative;
+          z-index: 2;
+        }
+
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes rotateGlow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
         
         /* Total UMI earned indicator */
@@ -1413,11 +1650,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
           to { box-shadow: 0 6px 18px rgba(242, 128, 17, 0.2); }
         }
 
-        @keyframes pulse {
-          from { transform: scale(1); }
-          to { transform: scale(1.05); }
-        }
-
         @keyframes rotate {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -1696,6 +1928,16 @@ const uploadIdCardToS3 = async (imageBlob) => {
           .action-buttons {
             margin-bottom: 70px; /* Réduit de 80px à 70px */
           }
+          
+          /* Adaptation pour mobile */
+          .lottery-pill {
+            max-width: 100%;
+          }
+          
+          .lottery-animation-container {
+            width: 85%;
+            padding: 1.5rem;
+          }
         }
         
         @media (min-width: 768px) {
@@ -1838,6 +2080,48 @@ const uploadIdCardToS3 = async (imageBlob) => {
           .verified-status {
             background-color: rgba(46, 160, 67, 0.15);
             border-color: rgba(46, 160, 67, 0.3);
+          }
+          
+          /* Adaptation pour mode sombre - Nouvelle version minimaliste */
+          .lottery-pill-content {
+            background-color: rgba(242, 128, 17, 0.15);
+            border-color: rgba(242, 128, 17, 0.35);
+          }
+          
+          .lottery-text-highlight {
+            color: #f28011;
+          }
+          
+          .lottery-text-info {
+            color: #f4e9b7;
+          }
+          
+          .lottery-text-tip {
+            color: rgba(244, 233, 183, 0.8);
+          }
+          
+          .lottery-animation-container {
+            background-color: #303421;
+            border-color: rgba(242, 128, 17, 0.5);
+          }
+          
+          .lottery-winners-message,
+          .lottery-sub-message {
+            color: #f4e9b7;
+          }
+          
+          .lottery-sub-message {
+            background-color: rgba(242, 128, 17, 0.2);
+          }
+          
+          .lottery-boost-message {
+            color: rgba(244, 233, 183, 0.7);
+          }
+          
+          .lottery-ticket-badge-refined {
+            background-color: #303421;
+            border-color: rgba(242, 128, 17, 0.5);
+            color: #f4e9b7;
           }
         }
       `}</style>
