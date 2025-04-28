@@ -14,7 +14,7 @@ import createAuthRoutes from './routes/auth.js';
 // Import autres routes (si vous en avez)
 import userRoutes from './routes/user.js';
 import messageRoutes from './routes/message.js';
-import notificationRoutes from './routes/notifications.js';
+// import notificationRoutes from './routes/notifications.js';
 
 
 
@@ -151,7 +151,7 @@ app.use('/api/messages', messageRoutes);
 console.log('[SERVER] Routes API configurées.');
 
 app.use('/api/airdrop', airdropRoutes)
-app.use('/api/notifications', notificationRoutes);
+// app.use('/api/notifications', notificationRoutes);
 
 
 // Route de test simple
