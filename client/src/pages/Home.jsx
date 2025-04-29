@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { MiniKit } from "@worldcoin/minikit-js";
+import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import head from './head.png';
 import UmiToken from './Umi_Token.png'; // Image du token UMI
 
