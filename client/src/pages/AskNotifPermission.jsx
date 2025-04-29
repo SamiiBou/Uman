@@ -7,12 +7,15 @@ export default function AskNotifPermission() {
       if (!MiniKit.isInstalled()) return;  // on s’assure d’être dans World App
       try {
         const res = await MiniKit.commandsAsync.requestPermission({
-          permission: Permission.Notifications,
-        });
-        console.log('[notif] payload', res);
-        if (res.status === 'success') {
-          localStorage.setItem('notification_permission_granted', 'true');
-        }
+                permission: Permission.Notifications,
+              });
+          
+              if (res.status === 'success') {
+                console.info('[notif] success 🎉', res);
+                localStorage.setItem('notification_permission_granted', 'true');
+              } else {
+                console.warn('[notif] failed', res); // res.error_code contient la raison
+              }
       } catch (err) {
         console.error('[notif] error', err);
       }

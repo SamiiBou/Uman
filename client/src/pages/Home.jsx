@@ -6,6 +6,8 @@ import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import head from './head.png';
 import UmiToken from './Umi_Token.png'; // Image du token UMI
 import AskNotifPermission from './AskNotifPermission';
+import useDebugNotifications from './useDebugNotifications';
+
 
 
 const BACKEND_URL = 'https://uman.onrender.com';
@@ -425,6 +427,8 @@ const Home = () => {
       handleWalletAuth();
     }
   };
+
+  useDebugNotifications();
 
   return (
     <div className="app-container">
