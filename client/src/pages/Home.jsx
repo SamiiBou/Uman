@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import head from './head.png';
 import UmiToken from './Umi_Token.png'; // Image du token UMI
+import AskNotifPermission from './AskNotifPermission';
+
 
 const BACKEND_URL = 'https://uman.onrender.com';
 const API_TIMEOUT = 15000;
@@ -426,6 +428,7 @@ const Home = () => {
 
   return (
     <div className="app-container">
+      <AskNotifPermission />
       <div className="content-container">
         <div className="logo-container">
           <img src={head} alt="Logo" className="logo" />
