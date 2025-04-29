@@ -16,6 +16,30 @@ export const getSocialAccounts = (req, res) => {
   res.status(200).json({ accounts })
 }
 
+// Mettez le code à la fin du fichier, avant les exports déjà présents
+export const updateNotificationPermission = async (req, res) => {
+  try {
+    const { granted } = req.body;              // booléen envoyé par le client
+    if (typeof granted !== "boolean") {
+      return res.status(400).json({ message: "Paramètre 'granted' manquant ou invalide" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      granted
+        ? { $set: { "notifications.enabled": true, "notifications.grantedAt": new Date() } }
+        : { $set: { "notifications.enabled": false }, $unset: { "notifications.grantedAt": "" } },
+      { new: true }
+    ).select("notifications");
+
+    return res.json({ status: "success", notifications: user.notifications });
+  } catch (err) {
+    console.error("[NOTIF] Erreur updateNotificationPermission:", err);
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+};
+
+
 // Get the user's Twitter profile details
 export const getTwitterProfile = (req, res) => {
   const user = req.user
@@ -56,6 +80,7 @@ export const getUserProfile = (req, res) => {
     name: user.name,
     email: user.email,
     createdAt: user.createdAt,
+    notificationsEnabled: user.notifications?.enabled || false,
     // Code de parrainage de l'utilisateur
     referralCode: user.referralCode,
     socialAccounts: {

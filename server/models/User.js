@@ -147,6 +147,7 @@ const UserSchema = new mongoose.Schema(
       }
       // Vous pourrez ajouter d'autres réseaux sociaux ici plus tard
     },
+    
 
     /* ------- Daily login ----------------------------------------- */
     dailyLogin: {
@@ -174,6 +175,11 @@ const UserSchema = new mongoose.Schema(
     /* ====== 🆕 Airdrop pending & historique ====================== */
     claimPending : { type: ClaimPendingSchema, default: null },
     claimsHistory: { type: [ClaimHistorySchema], default: [] },
+
+    notifications: {
+        enabled   : { type: Boolean, default: false },  // vrai si l’utilisateur a accepté
+        grantedAt : { type: Date,    default: null }    // date d’acceptation
+        },
 
     /* ------- Meta ------------------------------------------------ */
     createdAt: { type: Date, default: Date.now },

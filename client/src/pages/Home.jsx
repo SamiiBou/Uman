@@ -127,6 +127,7 @@ const Home = () => {
         setReferralCode(ref);
       }
     }, [location.search]);
+    
 
   // Function to get wallet address with retries
   const getWalletAddress = async (maxRetries = 5) => {

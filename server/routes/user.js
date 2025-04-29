@@ -15,7 +15,8 @@ import {
   getConnections, 
   getUserConnectionsById,
   getUserProfileById,
-  getVerifiedUsers
+  getVerifiedUsers,
+  updateNotificationPermission
 } from '../controllers/user.js';
 import { verifyCloudProof } from "@worldcoin/minikit-js";
 import User from '../models/User.js';
@@ -40,6 +41,8 @@ router.get('/search', searchUsers);
 router.get('/search-app', searchAppUsers);
 
 router.get('/verified', getVerifiedUsers);
+
+router.post("/notifications/permission", updateNotificationPermission);
 
 
 // Token balance endpoint - peut être utilisé avec ou sans authentification
