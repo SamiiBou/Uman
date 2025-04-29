@@ -62,7 +62,7 @@ const Home = () => {
 
       // Ne demander la permission que si l'utilisateur ne l'a pas déjà accordée
       const stored = localStorage.getItem('notification_permission_granted');
-      if (!stored && MiniKit.isInstalled()) {
+      if (stored !== 'true' && MiniKit.isInstalled()) {
         const granted = await requestNotificationPermission();
         if (granted) {
           localStorage.setItem('notification_permission_granted', 'true');
