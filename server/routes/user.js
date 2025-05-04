@@ -45,6 +45,11 @@ router.get('/verified', getVerifiedUsers);
 router.post("/notifications/permission", updateNotificationPermission);
 
 
+router.get('/check-telegram/:username', searchTelegramUser);
+router.get('/check-twitter/:username', searchTwitterUser);  
+router.get('/check-discord/:username', searchDiscordUser);
+
+
 // Token balance endpoint - peut être utilisé avec ou sans authentification
 router.get('/token-balance/:walletAddress', async (req, res) => {
   try {

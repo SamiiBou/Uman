@@ -656,3 +656,260 @@ export const getVerifiedUsers = async (req, res) => {
     });
   }
 };
+
+
+
+export const searchTelegramUser = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    console.log(`[TELEGRAM CHECK] Received request for username: "${username}"`);
+    
+    if (!username) {
+      console.log('[TELEGRAM CHECK] No username provided in request');
+      return res.status(400).json({
+        success: false,
+        message: 'A Telegram username is required'
+      });
+    }
+
+    // Clean the username (remove @ if present)
+    const cleanUsername = username.replace('@', '');
+    console.log(`[TELEGRAM CHECK] Cleaned username for search: "${cleanUsername}"`);
+    
+    // Using case-insensitive regex search
+    console.log(`[TELEGRAM CHECK] Searching with case-insensitive regex: { 'social.telegram.username': /${cleanUsername}/i }`);
+    
+    // Find user with the given Telegram username (case-insensitive)
+    const user = await User.findOne({
+      'social.telegram.username': { $regex: new RegExp(`^${cleanUsername}$`, 'i') }
+    });
+
+    if (user) {
+      console.log(`[TELEGRAM CHECK] User FOUND: ${user._id} (${user.name})`);
+      console.log(`[TELEGRAM CHECK] User details: ${JSON.stringify({
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        verified: user.verified,
+        telegramUsername: user.social?.telegram?.username || 'N/A'
+      })}`);
+      
+      // Use the actual stored username for display
+      const actualUsername = user.social?.telegram?.username || cleanUsername;
+      
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: `User @${actualUsername} is a verified human`,
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          verified: user.verified
+        }
+      });
+    }
+
+    console.log(`[TELEGRAM CHECK] No user found with Telegram username (case-insensitive): "${cleanUsername}"`);
+    console.log('[TELEGRAM CHECK] Checking for any Telegram users as reference:');
+    
+    // For debugging: Check if we have ANY users with Telegram accounts
+    const telegramUsers = await User.find({
+      'social.telegram.username': { $exists: true }
+    }).limit(3);
+    
+    if (telegramUsers.length > 0) {
+      console.log(`[TELEGRAM CHECK] Found ${telegramUsers.length} example Telegram users:`);
+      telegramUsers.forEach(u => {
+        console.log(`- ID: ${u._id}, Name: ${u.name}, Telegram: ${u.social?.telegram?.username}`);
+      });
+    } else {
+      console.log('[TELEGRAM CHECK] No users with Telegram accounts found in database');
+    }
+
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: `No verified user found with Telegram username @${cleanUsername}`
+    });
+  } catch (error) {
+    console.error('[TELEGRAM CHECK] Error searching for Telegram user:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during the search'
+    });
+  }
+};
+
+/**
+ * Check if a user exists with a Twitter/X account
+ */
+export const searchTwitterUser = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    console.log(`[TWITTER CHECK] Received request for username: "${username}"`);
+    
+    if (!username) {
+      console.log('[TWITTER CHECK] No username provided in request');
+      return res.status(400).json({
+        success: false,
+        message: 'A Twitter username is required'
+      });
+    }
+
+    // Clean the username (remove @ if present)
+    const cleanUsername = username.replace('@', '');
+    console.log(`[TWITTER CHECK] Cleaned username for search: "${cleanUsername}"`);
+    
+    // Using case-insensitive regex search
+    console.log(`[TWITTER CHECK] Searching with case-insensitive regex: { 'social.twitter.username': /${cleanUsername}/i }`);
+    
+    // Find user with the given Twitter username (case-insensitive)
+    const user = await User.findOne({
+      'social.twitter.username': { $regex: new RegExp(`^${cleanUsername}$`, 'i') }
+    });
+
+    if (user) {
+      console.log(`[TWITTER CHECK] User FOUND: ${user._id} (${user.name})`);
+      console.log(`[TWITTER CHECK] User details: ${JSON.stringify({
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        verified: user.verified,
+        twitterUsername: user.social?.twitter?.username || 'N/A'
+      })}`);
+      
+      // Use the actual stored username for display
+      const actualUsername = user.social?.twitter?.username || cleanUsername;
+      
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: `User @${actualUsername} is a verified human`,
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          verified: user.verified
+        }
+      });
+    }
+
+    console.log(`[TWITTER CHECK] No user found with Twitter username (case-insensitive): "${cleanUsername}"`);
+    console.log('[TWITTER CHECK] Checking for any Twitter users as reference:');
+    
+    // For debugging: Check if we have ANY users with Twitter accounts
+    const twitterUsers = await User.find({
+      'social.twitter.username': { $exists: true }
+    }).limit(3);
+    
+    if (twitterUsers.length > 0) {
+      console.log(`[TWITTER CHECK] Found ${twitterUsers.length} example Twitter users:`);
+      twitterUsers.forEach(u => {
+        console.log(`- ID: ${u._id}, Name: ${u.name}, Twitter: ${u.social?.twitter?.username}`);
+      });
+    } else {
+      console.log('[TWITTER CHECK] No users with Twitter accounts found in database');
+    }
+
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: `No verified user found with Twitter username @${cleanUsername}`
+    });
+  } catch (error) {
+    console.error('[TWITTER CHECK] Error searching for Twitter user:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during the search'
+    });
+  }
+};
+
+/**
+ * Check if a user exists with a Discord account
+ */
+export const searchDiscordUser = async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    console.log(`[DISCORD CHECK] Received request for username: "${username}"`);
+    
+    if (!username) {
+      console.log('[DISCORD CHECK] No username provided in request');
+      return res.status(400).json({
+        success: false,
+        message: 'A Discord username is required'
+      });
+    }
+
+    // Clean the username
+    const cleanUsername = username.replace('@', '');
+    console.log(`[DISCORD CHECK] Cleaned username for search: "${cleanUsername}"`);
+    
+    // Using case-insensitive regex search
+    console.log(`[DISCORD CHECK] Searching with case-insensitive regex: { 'social.discord.username': /${cleanUsername}/i }`);
+    
+    // Find user with the given Discord username (case-insensitive)
+    const user = await User.findOne({
+      'social.discord.username': { $regex: new RegExp(`^${cleanUsername}$`, 'i') }
+    });
+
+    if (user) {
+      console.log(`[DISCORD CHECK] User FOUND: ${user._id} (${user.name})`);
+      console.log(`[DISCORD CHECK] User details: ${JSON.stringify({
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        verified: user.verified,
+        discordUsername: user.social?.discord?.username || 'N/A'
+      })}`);
+      
+      // Use the actual stored username for display
+      const actualUsername = user.social?.discord?.username || cleanUsername;
+      
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        message: `User ${actualUsername} is a verified human`,
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          verified: user.verified
+        }
+      });
+    }
+
+    console.log(`[DISCORD CHECK] No user found with Discord username (case-insensitive): "${cleanUsername}"`);
+    console.log('[DISCORD CHECK] Checking for any Discord users as reference:');
+    
+    // For debugging: Check if we have ANY users with Discord accounts
+    const discordUsers = await User.find({
+      'social.discord.username': { $exists: true }
+    }).limit(3);
+    
+    if (discordUsers.length > 0) {
+      console.log(`[DISCORD CHECK] Found ${discordUsers.length} example Discord users:`);
+      discordUsers.forEach(u => {
+        console.log(`- ID: ${u._id}, Name: ${u.name}, Discord: ${u.social?.discord?.username}`);
+      });
+    } else {
+      console.log('[DISCORD CHECK] No users with Discord accounts found in database');
+    }
+
+    return res.status(200).json({
+      success: true,
+      exists: false,
+      message: `No verified user found with Discord username ${cleanUsername}`
+    });
+  } catch (error) {
+    console.error('[DISCORD CHECK] Error searching for Discord user:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred during the search'
+    });
+  }
+};
