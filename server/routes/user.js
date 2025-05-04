@@ -16,7 +16,10 @@ import {
   getUserConnectionsById,
   getUserProfileById,
   getVerifiedUsers,
-  updateNotificationPermission
+  updateNotificationPermission,
+  searchTelegramUser,
+  searchTwitterUser,
+  searchDiscordUser
 } from '../controllers/user.js';
 import { verifyCloudProof } from "@worldcoin/minikit-js";
 import User from '../models/User.js';
