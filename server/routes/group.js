@@ -1,26 +1,32 @@
 import express from 'express';
 import Group from '../models/Group.js';
 import User  from '../models/User.js';
+import mongoose from 'mongoose';           
+
 
 const router = express.Router();
 
 // 1️⃣ Track a speaking user in a group
+// routes/group.js (inside POST /groups/:chatId/members)
 router.post('/groups/:chatId/members', async (req, res) => {
     const { chatId } = req.params;
-    const { userId } = req.body;
+    const { userId } = req.body;  // this is a Telegram numeric ID
   
-    // 1️⃣ Validate input
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: 'Invalid Mongo ObjectId' });
+    // 1️⃣ Find or create the User by telegramId
+    let user = await User.findOne({ telegramId: userId });
+    if (!user) {
+      user = new User({ telegramId: userId });
+      await user.save();
     }
   
-    const userObjectId = new mongoose.Types.ObjectId(userId);
+    // 2️⃣ Now we have a valid Mongo ObjectId
+    const userObjectId = user._id;
   
-    // 2️⃣ Fetch or create the group
+    // 3️⃣ Fetch or create the group
     let group = await Group.findOne({ chatId });
     if (!group) group = new Group({ chatId, members: [] });
   
-    // 3️⃣ Add member only if not already present
+    // 4️⃣ Add member only if not already present
     if (!group.members.includes(userObjectId)) {
       group.members.push(userObjectId);
       await group.save();
