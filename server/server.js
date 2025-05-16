@@ -16,6 +16,8 @@ import userRoutes from './routes/user.js';
 import messageRoutes from './routes/message.js';
 // import notificationRoutes from './routes/notifications.js';
 
+import groupRoutes from './routes/group.js';
+
 
 
 
@@ -151,6 +153,8 @@ app.use('/api/messages', messageRoutes);
 console.log('[SERVER] Routes API configurées.');
 
 app.use('/api/airdrop', airdropRoutes)
+app.use('/api', groupRoutes);
+
 // app.use('/api/notifications', notificationRoutes);
 
 
