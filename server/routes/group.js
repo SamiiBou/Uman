@@ -6,21 +6,29 @@ const router = express.Router();
 
 // 1️⃣ Track a speaking user in a group
 router.post('/groups/:chatId/members', async (req, res) => {
-  const { chatId } = req.params;
-  const { userId } = req.body;
-  if (!userId) return res.status(400).json({ message: 'userId required' });
-
-  let group = await Group.findOne({ chatId });
-  if (!group) {
-    group = new Group({ chatId, members: [] });
-  }
-  // avoid duplicates
-  if (!group.members.includes(userId)) {
-    group.members.push(userId);
-    await group.save();
-  }
-  res.sendStatus(200);
-});
+    const { chatId } = req.params;
+    const { userId } = req.body;
+  
+    // 1️⃣ Validate input
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: 'Invalid Mongo ObjectId' });
+    }
+  
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+  
+    // 2️⃣ Fetch or create the group
+    let group = await Group.findOne({ chatId });
+    if (!group) group = new Group({ chatId, members: [] });
+  
+    // 3️⃣ Add member only if not already present
+    if (!group.members.includes(userObjectId)) {
+      group.members.push(userObjectId);
+      await group.save();
+    }
+  
+    res.sendStatus(200);
+  });
+  
 
 // 2️⃣ Return total & verified member counts
 router.get('/groups/:chatId/stats', async (req, res) => {
