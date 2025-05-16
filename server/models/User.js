@@ -37,7 +37,7 @@ const ClaimHistorySchema = new mongoose.Schema(
 const UserSchema = new mongoose.Schema(
   {
     /* ------- Identité & login ------------------------------------ */
-    name:  { type: String, required: true },
+    name:  { type: String },
     email: { type: String, sparse: true, index: true },
 
     verified     : { type: Boolean, default: false },       // World ID
