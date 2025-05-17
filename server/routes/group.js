@@ -74,79 +74,84 @@ router.post('/groups/:chatId/members', async (req, res) => {
 // GET /groups/:chatId/stats
 //   ?users=true   → renvoie aussi un échantillon (max 20) de membres
 // -----------------------------------------------------------------------------
-router.get("/groups/:chatId/stats", async (req, res) => {
-    const { chatId } = req.params;
-    const includeUsers = req.query.users === "true";
+router.get('/groups/:chatId/stats', async (req, res) => {
+    const { chatId }   = req.params;
+    const includeUsers = req.query.users === 'true';
   
     try {
-      /* ----------------------------------------------------------------------
-         1️⃣  Pipeline d’agrégation
-         -------------------------------------------------------------------- */
+      /* 1️⃣  Pipeline */
       const pipeline = [
-        { $match: { chatId } },                  // → group recherché
-        { $project: { members: 1 } },            // on ne garde que le tableau
-        { $unwind: "$members" },                 // explode 1 doc / membre
+        { $match   : { chatId } },
+        { $project : { members: 1 } },
+        { $unwind  : '$members' },
+  
+        /* Récupération du User complet */
         {
-          $lookup: {                             // jointure sur la collection users
-            from: "users",
-            localField: "members",
-            foreignField: "_id",
-            as: "member",
-          },
+          $lookup: {
+            from         : 'users',
+            localField   : 'members',
+            foreignField : '_id',
+            as           : 'member'
+          }
         },
-        { $unwind: "$member" },                  // member devient un objet unique
+        { $unwind: '$member' },
+  
+        /* 2️⃣  Comptage : verified ↔ username Telegram présent ET non vide */
         {
-          $group: {                              // on regroupe pour compter
-            _id: null,
-            totalMembers:   { $sum: 1 },
-            verifiedMembers:{ $sum: { $cond: ["$member.verified", 1, 0] } },
+          $group: {
+            _id          : null,
+            totalMembers : { $sum: 1 },
+            verifiedMembers: {
+              $sum: {
+                $cond: [
+                  { $gt: [ { $strLenCP: { $ifNull: ['$member.social.telegram.username', ''] } }, 0 ] },
+                  1,
+                  0
+                ]
+              }
+            },
             sample: {
               $push: {
-                username:   "$member.social.telegram.username",
-                telegramId: "$member.telegramId",
-                firstName:  "$member.social.telegram.firstName",
-                lastName:   "$member.social.telegram.lastName",
-                verified:   "$member.verified",
-              },
-            },
-          },
-        },
+                username   : '$member.social.telegram.username',
+                telegramId : '$member.telegramId',
+                firstName  : '$member.social.telegram.firstName',
+                lastName   : '$member.social.telegram.lastName',
+                /* Pour le bot : même logique de vérification */
+                verified: {
+                  $gt: [ { $strLenCP: { $ifNull: ['$member.social.telegram.username', ''] } }, 0 ]
+                }
+              }
+            }
+          }
+        }
       ];
   
-      /* Limiter l’échantillon à 20 éléments seulement si demandé */
+      /* Limiter l’échantillon */
       if (!includeUsers) {
         pipeline.push({ $project: { sample: 0 } });
       } else {
-        pipeline.push({ $addFields: { sample: { $slice: ["$sample", 20] } } });
+        pipeline.push({ $addFields: { sample: { $slice: ['$sample', 20] } } });
       }
   
-      /* ----------------------------------------------------------------------
-         2️⃣  Exécution
-         -------------------------------------------------------------------- */
-      const result = await Group.aggregate(pipeline).exec();
-      if (result.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Group not found or empty." });
+      /* 3️⃣  Exécution */
+      const [stats] = await Group.aggregate(pipeline);
+      if (!stats) {
+        return res.status(404).json({ success: false, message: 'Group not found or empty.' });
       }
   
-      const { totalMembers, verifiedMembers, sample } = result[0];
-  
-      /* ----------------------------------------------------------------------
-         3️⃣  Payload
-         -------------------------------------------------------------------- */
+      /* 4️⃣  Réponse */
       return res.json({
-        success: true,
+        success        : true,
         chatId,
-        totalMembers,
-        verifiedMembers,
-        members: includeUsers ? sample : undefined,
+        totalMembers   : stats.totalMembers,
+        verifiedMembers: stats.verifiedMembers,
+        members        : includeUsers ? stats.sample : undefined
       });
-    } catch (error) {
-      console.error(`Error in /groups/${chatId}/stats:`, error);
-      return res
-        .status(500)
-        .json({ success: false, message: "Server error while fetching group stats." });
+  
+    } catch (err) {
+      console.error(`[GROUP-STATS] Error (${chatId})`, err);
+      return res.status(500).json({ success: false, message: 'Server error while fetching group stats.' });
     }
   });
+  
 export default router;
