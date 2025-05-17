@@ -69,60 +69,79 @@ router.post('/groups/:chatId/members', async (req, res) => {
 
 
 // 2️⃣ Return total & verified member counts, and sample members
+// routes/group.js
+// -----------------------------------------------------------------------------
+// GET /groups/:chatId/stats
+//   ?users=true   → renvoie aussi un échantillon (max 20) de membres
+// -----------------------------------------------------------------------------
 router.get("/groups/:chatId/stats", async (req, res) => {
     const { chatId } = req.params;
     const includeUsers = req.query.users === "true";
   
     try {
-      // 1️⃣ Find the group (lean() for plain JS object)
-      const group = await Group.findOne({ chatId }).lean();
-      if (!group) {
+      /* ----------------------------------------------------------------------
+         1️⃣  Pipeline d’agrégation
+         -------------------------------------------------------------------- */
+      const pipeline = [
+        { $match: { chatId } },                  // → group recherché
+        { $project: { members: 1 } },            // on ne garde que le tableau
+        { $unwind: "$members" },                 // explode 1 doc / membre
+        {
+          $lookup: {                             // jointure sur la collection users
+            from: "users",
+            localField: "members",
+            foreignField: "_id",
+            as: "member",
+          },
+        },
+        { $unwind: "$member" },                  // member devient un objet unique
+        {
+          $group: {                              // on regroupe pour compter
+            _id: null,
+            totalMembers:   { $sum: 1 },
+            verifiedMembers:{ $sum: { $cond: ["$member.verified", 1, 0] } },
+            sample: {
+              $push: {
+                username:   "$member.social.telegram.username",
+                telegramId: "$member.telegramId",
+                firstName:  "$member.social.telegram.firstName",
+                lastName:   "$member.social.telegram.lastName",
+                verified:   "$member.verified",
+              },
+            },
+          },
+        },
+      ];
+  
+      /* Limiter l’échantillon à 20 éléments seulement si demandé */
+      if (!includeUsers) {
+        pipeline.push({ $project: { sample: 0 } });
+      } else {
+        pipeline.push({ $addFields: { sample: { $slice: ["$sample", 20] } } });
+      }
+  
+      /* ----------------------------------------------------------------------
+         2️⃣  Exécution
+         -------------------------------------------------------------------- */
+      const result = await Group.aggregate(pipeline).exec();
+      if (result.length === 0) {
         return res
           .status(404)
-          .json({ success: false, message: "Group not found or not yet tracked." });
+          .json({ success: false, message: "Group not found or empty." });
       }
   
-      // 2️⃣ Basic counters
-      const memberIds = group.members; // array of ObjectIds
-      const totalMembersInDB = memberIds.length;
+      const { totalMembers, verifiedMembers, sample } = result[0];
   
-      // Count verified humans directly in MongoDB (no populate required)
-      const verifiedHumansInDB = await User.countDocuments({
-        _id: { $in: memberIds },
-        verified: true,
-      });
-  
-      // 3️⃣ Optional member sample for display
-      let memberSamples = [];
-      if (includeUsers && totalMembersInDB > 0) {
-        memberSamples = await User.find({ _id: { $in: memberIds } })
-          .select(
-            "telegramId username verified social.telegram.username social.telegram.firstName social.telegram.lastName"
-          )
-          .limit(20)
-          .lean()
-          .exec();
-  
-        // Format the sample in the exact shape the bot expects
-        memberSamples = memberSamples.map((u) => ({
-          username: u.social?.telegram?.username || null,
-          telegramId: u.telegramId,
-          firstName: u.social?.telegram?.firstName || null,
-          lastName: u.social?.telegram?.lastName || null,
-          verified: u.verified,
-        }));
-      }
-  
-      // 4️⃣ Build and send payload
-      const payload = {
+      /* ----------------------------------------------------------------------
+         3️⃣  Payload
+         -------------------------------------------------------------------- */
+      return res.json({
         success: true,
         chatId,
-        totalMembers: totalMembersInDB,
-        verifiedMembers: verifiedHumansInDB,
-        members: includeUsers ? memberSamples : undefined,
-      };
-  
-      return res.json(payload);
+        totalMembers,
+        verifiedMembers,
+        members: includeUsers ? sample : undefined,
+      });
     } catch (error) {
       console.error(`Error in /groups/${chatId}/stats:`, error);
       return res
@@ -130,5 +149,4 @@ router.get("/groups/:chatId/stats", async (req, res) => {
         .json({ success: false, message: "Server error while fetching group stats." });
     }
   });
-
 export default router;
