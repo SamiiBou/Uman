@@ -72,65 +72,63 @@ router.post('/groups/:chatId/members', async (req, res) => {
 router.get("/groups/:chatId/stats", async (req, res) => {
     const { chatId } = req.params;
     const includeUsers = req.query.users === "true";
-
+  
     try {
-        let groupQuery = Group.findOne({ chatId });
-
-        if (includeUsers) {
-            // On populate les champs nécessaires pour l'affichage dans le bot
-            groupQuery = groupQuery.populate({
-                path: "members",
-                select: "telegramId username verified social.telegram.username social.telegram.firstName social.telegram.lastName" // Ajoutez les champs dont vous avez besoin
-            });
-        }
-
-        const group = await groupQuery.exec();
-
-        if (!group) {
-            return res.status(404).json({ success: false, message: "Group not found or not yet tracked." });
-        }
-
-        const totalMembersInDB = group.members.length;
-        let verifiedHumansInDB = 0;
-        let memberSamples = [];
-
-        if (totalMembersInDB > 0 && Array.isArray(group.members) && group.members[0]._id) { // Vérifier si members est bien populé
-            verifiedHumansInDB = group.members.filter(member => member.verified === true).length;
-
-            if (includeUsers) {
-                memberSamples = group.members.map(u => ({
-                    // `u.username` est le username UmanApp global
-                    // `u.social.telegram.username` est le username Telegram spécifique
-                    // Pour le bot, on veut afficher le username Telegram
-                    username: u.social?.telegram?.username, // Priorité au username Telegram
-                    telegramId: u.telegramId,
-                    firstName: u.social?.telegram?.firstName,
-                    lastName: u.social?.telegram?.lastName,
-                    verified: u.verified, // Statut de vérification WorldID global de l'utilisateur
-                    // umanUsername: u.username // Si vous voulez aussi le username UmanApp
-                })).slice(0, 20); // Limiter le nombre d'échantillons
-            }
-        } else if (totalMembersInDB > 0) {
-             // Les membres ne sont pas populés, on ne peut pas compter les vérifiés ni donner d'échantillons
-             // Cela ne devrait pas arriver si includeUsers=true et qu'il y a des membres.
-             console.warn(`Group ${chatId} has ${totalMembersInDB} members, but they were not populated for stats.`);
-        }
-
-
-        const payload = {
-            success: true,
-            chatId: chatId,
-            totalMembers: totalMembersInDB,       // Nombre de membres que le bot a vu et stocké
-            verifiedMembers: verifiedHumansInDB,  // Parmi ceux stockés, combien ont User.verified = true
-            members: includeUsers ? memberSamples : undefined
-        };
-
-        res.json(payload);
-
+      // 1️⃣ Find the group (lean() for plain JS object)
+      const group = await Group.findOne({ chatId }).lean();
+      if (!group) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Group not found or not yet tracked." });
+      }
+  
+      // 2️⃣ Basic counters
+      const memberIds = group.members; // array of ObjectIds
+      const totalMembersInDB = memberIds.length;
+  
+      // Count verified humans directly in MongoDB (no populate required)
+      const verifiedHumansInDB = await User.countDocuments({
+        _id: { $in: memberIds },
+        verified: true,
+      });
+  
+      // 3️⃣ Optional member sample for display
+      let memberSamples = [];
+      if (includeUsers && totalMembersInDB > 0) {
+        memberSamples = await User.find({ _id: { $in: memberIds } })
+          .select(
+            "telegramId username verified social.telegram.username social.telegram.firstName social.telegram.lastName"
+          )
+          .limit(20)
+          .lean()
+          .exec();
+  
+        // Format the sample in the exact shape the bot expects
+        memberSamples = memberSamples.map((u) => ({
+          username: u.social?.telegram?.username || null,
+          telegramId: u.telegramId,
+          firstName: u.social?.telegram?.firstName || null,
+          lastName: u.social?.telegram?.lastName || null,
+          verified: u.verified,
+        }));
+      }
+  
+      // 4️⃣ Build and send payload
+      const payload = {
+        success: true,
+        chatId,
+        totalMembers: totalMembersInDB,
+        verifiedMembers: verifiedHumansInDB,
+        members: includeUsers ? memberSamples : undefined,
+      };
+  
+      return res.json(payload);
     } catch (error) {
-        console.error(`Error in /groups/${chatId}/stats: `, error);
-        res.status(500).json({ success: false, message: "Server error while fetching group stats." });
+      console.error(`Error in /groups/${chatId}/stats:`, error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Server error while fetching group stats." });
     }
-});
+  });
 
 export default router;
