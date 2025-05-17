@@ -187,11 +187,94 @@ const UserSchema = new mongoose.Schema(
         grantedAt : { type: Date,    default: null }    // date d’acceptation
         },
 
+    score: {
+          type: Number,
+          min: 0,
+          max: 100,
+          default: 0
+        },    
+
     /* ------- Meta ------------------------------------------------ */
     createdAt: { type: Date, default: Date.now },
   },
   { strict: true }          // garde « strict » pour capter les fautes
 );
+
+function normalize(value, min, max) {
+  return Math.min(Math.max((value - min) / (max - min), 0), 1);
+}
+
+const WEIGHTS = {
+  verification: 0.20,
+  socialLinks:  0.10,
+  loginStreak:  0.15,
+  friendship:   0.20,
+  tokenBalance: 0.10,
+  claims:       0.10,
+  referral:     0.10,
+  notifications:0.05
+};
+
+function calculateUserScore(user) {
+  // 1. Vérification World ID
+  const isVerified   = user.verified ? 1 : 0;
+  const levelScore   = { orb: 0.3, device: 0.6, phone: 1 }[user.verificationLevel] || 0;
+  const verifScore   = (isVerified * 0.5 + levelScore * 0.5);
+
+  // 2. Réseaux sociaux connectés
+  const socialLinksCount = Object.values(user.social || {}).filter(s => s?.id).length;
+  const socialScore      = normalize(socialLinksCount, 0, 5);
+
+  // 3. Streak de connexion
+  const streakScore = normalize(user.dailyLogin?.currentStreak || 0, 0, 30);
+
+  // 4. Amis & invitations
+  const friendsScore   = normalize(user.friends.length, 0, 1000);
+  const requestsScore  = normalize(
+    (user.friendRequestsSent.length + user.friendRequestsReceived.length),
+    0, 200
+  );
+  const friendshipScore = (friendsScore + requestsScore) / 2;
+
+  // 5. Solde de tokens
+  const balanceScore = normalize(user.tokenBalance || 0, 0, 10000);
+
+  // 6. Historique de claims
+  const claimsScore  = normalize(user.claimsHistory.length, 0, 50);
+
+  // 7. Parrainage
+  const referralScore = user.referrer ? 1 : 0;
+
+  // 8. Notifications
+  const notifScore    = user.notifications?.enabled ? 1 : 0;
+
+  // Pondération & somme
+  const raw =
+    WEIGHTS.verification   * verifScore +
+    WEIGHTS.socialLinks    * socialScore +
+    WEIGHTS.loginStreak    * streakScore +
+    WEIGHTS.friendship     * friendshipScore +
+    WEIGHTS.tokenBalance   * balanceScore +
+    WEIGHTS.claims         * claimsScore +
+    WEIGHTS.referral       * referralScore +
+    WEIGHTS.notifications  * notifScore;
+
+  // Retour sur 0–100
+  return Math.round(raw * 100);
+}
+
+// ————————————————————————————————————————————————
+// Hook pour mettre à jour le score avant chaque save()
+// ————————————————————————————————————————————————
+UserSchema.pre('save', function(next) {
+  this.score = calculateUserScore(this);
+  next();
+});
+
+// Méthode d’instance si besoin d’accès directe
+UserSchema.methods.getScore = function() {
+  return calculateUserScore(this);
+};
 
 const User = mongoose.model('User', UserSchema);
 export default User;
