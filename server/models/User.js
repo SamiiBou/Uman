@@ -47,10 +47,15 @@ const UserSchema = new mongoose.Schema(
     username: {
       type   : String,
       default: function () {
-        if (this.walletAddress) return `user_${this.walletAddress.slice(2, 8)}`;
-        return null;
-      },
+        // Ensure `this` is defined and walletAddress is available
+        if (this && this.walletAddress) {
+          return `user_${this.walletAddress.slice(2, 8)}`;
+        }
+        // Let Mongoose handle undefined as "no default"
+        return undefined;
+      }
     },
+    
 
     /* ------- Vérif sociales on-chain ----------------------------- */
     socialVerifications: {
