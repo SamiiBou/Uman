@@ -42,6 +42,7 @@ const UserSchema = new mongoose.Schema(
 
     verified     : { type: Boolean, default: false },       // World ID
     walletAddress: { type: String, unique: true, sparse: true },
+    telegramId     : { type: String, unique: true, sparse: true },
 
     username: {
       type   : String,

@@ -8,38 +8,49 @@ const router = express.Router();
 
 // 1️⃣ Track a speaking user in a group
 // routes/group.js (inside POST /groups/:chatId/members)
+// routes/group.js
 router.post('/groups/:chatId/members', async (req, res) => {
-    const { chatId } = req.params;
-    const { userId } = req.body;  // this is a Telegram numeric ID
+    const { chatId }          = req.params;
+    const { userId, username, firstName, lastName, photo } = req.body;
   
-    // 1️⃣ Find or create the User by telegramId
-    let user = await User.findOne({ telegramId: userId });
-    if (!user) {
-      user = new User({ telegramId: userId });
-      await user.save();
-    }
+    // 1️⃣ Upsert User by telegramId
+    const user = await User.findOneAndUpdate(
+      { telegramId: userId },
+      {
+        $set: {
+          telegramId: userId,
+          username  : username ?? undefined,
+          name      : (firstName || lastName) ? `${firstName ?? ''} ${lastName ?? ''}`.trim() : undefined,
+          'social.telegram': {
+            id             : userId,
+            username       : username,
+            firstName      : firstName,
+            lastName       : lastName,
+            profileImageUrl: photo,
+            lastUpdated    : new Date()
+          }
+        }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
   
-    // 2️⃣ Now we have a valid Mongo ObjectId
-    const userObjectId = user._id;
-  
-    // 3️⃣ Fetch or create the group
+    // 2️⃣ Associer le membre au groupe
     let group = await Group.findOne({ chatId });
     if (!group) group = new Group({ chatId, members: [] });
   
-    // 4️⃣ Add member only if not already present
-    if (!group.members.includes(userObjectId)) {
-      group.members.push(userObjectId);
+    if (!group.members.includes(user._id)) {
+      group.members.push(user._id);
       await group.save();
     }
   
     res.sendStatus(200);
   });
-  
+
 
 // 2️⃣ Return total & verified member counts
 router.get('/groups/:chatId/stats', async (req, res) => {
   const { chatId } = req.params;
-  const group = await Group.findOne({ chatId }).populate('members', 'verified');
+  const group = await Group.findOne({ chatId }).populate('members', 'username name social.telegram.username');
   if (!group) {
     return res.status(404).json({ success: false, message: 'Group not found' });
   }
