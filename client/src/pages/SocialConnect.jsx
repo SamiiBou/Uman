@@ -63,7 +63,7 @@ const SocialConnect = () => {
   const [idCardS3Key, setIdCardS3Key] = useState(() => localStorage.getItem('idCardS3Key'));
   
   // New states for lottery animation
-  const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
+  // const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
 
   useEffect(() => {
     // si l'utilisateur a déjà un idCardS3Key et un token
@@ -158,16 +158,16 @@ const SocialConnect = () => {
   }, []);
 
   // Add lottery animation effect
-  useEffect(() => {
-    const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
-    if (linkedCount > 0 && linkedCount < 3) {
-      setShowLotteryAnimation(true);
-      const timer = setTimeout(() => {
-        setShowLotteryAnimation(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [connectedAccounts]);
+  // useEffect(() => {
+  //   const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
+  //   if (linkedCount > 0 && linkedCount < 3) {
+  //     setShowLotteryAnimation(true);
+  //     const timer = setTimeout(() => {
+  //       setShowLotteryAnimation(false);
+  //     }, 5000);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [connectedAccounts]);
 
   // MODIFICATION 2: Modified useEffect to avoid regenerating if S3 key exists
   useEffect(() => {
@@ -548,7 +548,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
   const progressPercent = (linkedCount / 3) * 100;
   
   // Calculate lottery tickets based on connected accounts
-  const lotteryTickets = linkedCount;
+  // const lotteryTickets = linkedCount;
   
   return (
     <div className="social-connect">
@@ -593,23 +593,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
               </div>
               
               {/* Version améliorée et minimaliste de l'annonce de loterie */}
-              {!allLinked && (
-                <div className="lottery-pill" key={`lottery-${linkedCount}`}>
-                  <div className="lottery-pill-content">
-                    {/* <Ticket size={14} className="lottery-icon" /> */}
-                    <div className="lottery-text-container">
-
-                      <span className="lottery-text-highlight">Grab&nbsp;5&nbsp;$WLD !</span>
-
-                      <span className="lottery-text-info">Every week, 10 lucky verified users pocket&nbsp;5&nbsp;$WLD</span>
-
-                      <span className="lottery-text-tip">Verify more accounts to boost your odds</span>
-
-                      </div>
-
-                  </div>
-                </div>
-              )}
               
               {/* Total UMI earned indicator */}
               {totalUmiEarned > 0 && (
@@ -836,29 +819,9 @@ const uploadIdCardToS3 = async (imageBlob) => {
       </div>
       
       {/* Badge flottant simplifié */}
-      {!allLinked && linkedCount > 0 && (
-        <div className="lottery-ticket-badge-refined">
-          <Ticket size={14} />
-          <span>{lotteryTickets} lottery tickets</span>
-        </div>
-      )}
       
       {/* Animation marketing pour la loterie - style réduit et plus minimaliste */}
-      {showLotteryAnimation && (
-        <div className="lottery-animation-overlay">
-          <div className="lottery-animation-container">
-            <div className="lottery-glow"></div>
-            {/* <Ticket size={30} className="lottery-main-icon" /> */}
-            <p className="lottery-main-message">Grab&nbsp;5&nbsp;$WLD !</p>
-
-            <p className="lottery-winners-message">10 verified winners chosen weekly</p>
-
-            <p className="lottery-sub-message">Get verified now to enter the draw</p>
-
-            <p className="lottery-boost-message">More verifications&nbsp;=&nbsp;better odds</p>
-          </div>
-        </div>
-      )}
+      
       
       {notification.show && (
         <div className={`notification ${notification.type}`}>
