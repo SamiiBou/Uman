@@ -707,6 +707,7 @@ export const searchTelegramUser = async (req, res) => {
           name: user.name,
           username: user.username,
           verified: user.verified,
+          score   : user.score,
           socialAccounts: {
             twitter: user.social?.twitter?.id
               ? {
