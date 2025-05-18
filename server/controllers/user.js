@@ -706,7 +706,22 @@ export const searchTelegramUser = async (req, res) => {
           id: user._id,
           name: user.name,
           username: user.username,
-          verified: user.verified
+          verified: user.verified,
+          socialAccounts: {
+            twitter: user.social?.twitter?.id
+              ? {
+                  connected: true,
+                  username: user.social.twitter.username,
+                  verified: user.social.twitter.verified
+                }
+              : { connected: false },
+            discord: user.social?.discord?.id
+              ? {
+                  connected: true,
+                  username: user.social.discord.username
+                }
+              : { connected: false }
+          }
         }
       });
     }
