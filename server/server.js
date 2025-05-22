@@ -17,6 +17,8 @@ import messageRoutes from './routes/message.js';
 // import notificationRoutes from './routes/notifications.js';
 
 import groupRoutes from './routes/group.js';
+import statsRoutes from './routes/stats.js';
+
 
 
 
@@ -179,6 +181,9 @@ app.use((err, req, res, next) => {
         error: process.env.NODE_ENV === 'development' ? { message: err.message, stack: err.stack } : {}
      });
 });
+
+app.use('/api/stats', statsRoutes);
+console.log('[SERVER] Routes Stats configured.');
 
 // router.post("/request-airdrop", authenticateToken, async (req, res) => {
 //     const { amount } = req.body;
