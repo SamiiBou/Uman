@@ -54,7 +54,8 @@ app.set('trust proxy', 1);
 
 const allowedOrigins = [
     process.env.CLIENT_URL,           // your prod frontend
-    'http://localhost:3000'           // your dev frontend
+    'http://localhost:3000',
+    'https://uman-vit.vercel.app/'           // your dev frontend
   ];
 
 // Connexion à MongoDB
