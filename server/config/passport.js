@@ -10,15 +10,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Détermination du chemin vers .env à la racine du projet
 const envPath = path.resolve(__dirname, '..', '..', '.env');
-console.log(`[PASSPORT CONFIG] Chargement du fichier .env via: ${envPath}`);
 dotenv.config({ path: envPath });
 // Affichage de l'état des variables d'environnement Twitter pour débogage
-console.log(`[PASSPORT CONFIG] Environnement Twitter:
-  TWITTER_CONSUMER_KEY (legacy) = ${!!process.env.TWITTER_CONSUMER_KEY},
-  TWITTER_API_KEY = ${!!process.env.TWITTER_API_KEY},
-  TWITTER_CONSUMER_SECRET (legacy) = ${!!process.env.TWITTER_CONSUMER_SECRET},
-  TWITTER_API_SECRET_KEY = ${!!process.env.TWITTER_API_SECRET_KEY},
-  TWITTER_CALLBACK_URL = ${!!process.env.TWITTER_CALLBACK_URL}`);
 
 // Export d'une fonction qui prend l'instance passport en argument
 export default function(passportInstance) {
