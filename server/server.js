@@ -52,6 +52,11 @@ const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 
+const allowedOrigins = [
+    process.env.CLIENT_URL,           // your prod frontend
+    'http://localhost:3000'           // your dev frontend
+  ];
+
 // Connexion à MongoDB
 const MONGO_URI = process.env.MONGODB_URI;
 if (!MONGO_URI) {
@@ -73,12 +78,20 @@ if (!clientUrl) {
 }
 console.log(`Configuration CORS pour l'origine: ${clientUrl || '* (par défaut, non recommandé)*'}`);
 app.use(cors({
-    origin: clientUrl || true, 
+    origin: (origin, callback) => {
+      // allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
     methods: 'GET,POST,PUT,DELETE,OPTIONS',
-    credentials: true, 
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type','Authorization'],
     exposedHeaders: ['Set-Cookie']
-}));
+  }));
 
 // Middleware pour parser le JSON et les données URL-encodées
 app.use(express.json());
