@@ -44,77 +44,100 @@ const CLAIM_TTL_MS = 3600 * 1000; // 1h = 3600000ms
 
 async function monitorTx(userId, txId, nonce) {
   console.log(`[monitorTx] 🔍 Starting monitorTx for user=${userId}, txId=${txId}, nonce=${nonce}`);
+  let retryCount = 0;
+  const MAX_RETRIES = 12; // on retente 12 fois => ~1 minute (avec 5 s d’attente)
+
   for (;;) {
     try {
       const wcUrl = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}` +
                     `?app_id=${process.env.APP_ID}&type=transaction`;
       console.log(`[monitorTx] ⏳ Fetching Worldcoin status from ${wcUrl}`);
-      const wcResp = await fetch(wcUrl);
-      console.log(`[monitorTx] 🌐 Worldcoin response ok=${wcResp.ok}`);
+      const wcResp = await fetch(wcUrl, {
+        headers: {
+          'Authorization': `Bearer ${process.env.API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(`[monitorTx] 🌐 Worldcoin response ok=${wcResp.ok} (status=${wcResp.status})`);
 
       if (!wcResp.ok) {
-        console.error('[monitorTx] Failed to fetch Worldcoin status:', await wcResp.text());
+        const text = await wcResp.text();
+        console.error(`[monitorTx] ❌ Failed to fetch Worldcoin status: HTTP ${wcResp.status} – ${text || '[no body]'}`);
+        retryCount++;
+        if (retryCount >= MAX_RETRIES) {
+          console.error(`[monitorTx] ⚠️ Trop de tentatives infructueuses, on abandonne le monitorTx pour txId=${txId}`);
+          io?.to(userId).emit('claim_error', { message: 'Impossible de vérifier la transaction.' });
+          return;
+        }
         await wait(5000);
         continue;
       }
 
+      // → ici, on a wcResp.ok===true
       const wc = await wcResp.json();
       console.log('[monitorTx] Worldcoin payload:', wc);
 
-      if (wc.transactionStatus === 'pending') {
-        console.log(`[monitorTx] Transaction ${txId} still pending`);
+      // Notez que la propriété dans la réponse est snake_case, pas camelCase
+      // Doc : transaction_status (snake_case) :contentReference[oaicite:2]{index=2}
+      const txStatus = wc.transaction_status || wc.transactionStatus;
+      if (txStatus === 'pending') {
+        console.log(`[monitorTx] Transaction ${txId} toujours en pending`);
         await wait(5000);
         continue;
       }
 
-      if (wc.transactionStatus === 'failed') {
-        console.warn(`[monitorTx] Transaction ${txId} failed, rolling back pending claim`);
+      if (txStatus === 'failed') {
+        console.warn(`[monitorTx] Transaction ${txId} a échoué`);
         await User.updateOne({ _id: userId }, { $unset: { claimPending: '' } });
-        console.log('[monitorTx] User claimPending reset');
         io?.to(userId).emit('claim_failed', { nonce });
         return;
       }
 
-      console.log(`[monitorTx] Transaction ${txId} confirmed, hash=${wc.transactionHash}`);
-      const receipt = await provider.getTransactionReceipt(wc.transactionHash);
-      console.log('[monitorTx] Receipt fetched:', receipt);
+      // Si on arrive ici, txStatus === 'mined' (ou une autre valeur type 'success')
+      const txHash = wc.transaction_hash || wc.transactionHash;
+      console.log(`[monitorTx] Transaction confirmée, hash=${txHash}`);
 
+      // Récupérer le receipt on-chain
+      const receipt = await provider.getTransactionReceipt(txHash);
       if (!receipt || receipt.status !== 1) {
-        console.log('[monitorTx] Receipt not ready or failed, retrying...');
+        console.log('[monitorTx] Receipt pas encore prêt ou failed, on retente…');
         await wait(5000);
         continue;
       }
 
+      // Finaliser en base
       const user = await User.findById(userId).select('claimPending tokenBalance');
-      console.log('[monitorTx] User DB state:', user);
       if (!user?.claimPending) {
-        console.warn(`[monitorTx] No pending claim for user ${userId}, exiting`);
+        console.warn(`[monitorTx] Aucun claimPending pour user ${userId}, on stoppe.`);
         return;
       }
 
       const amount = user.claimPending.amount;
-      console.log(`[monitorTx] Finalizing claim, amount=${amount}`);
-
-      const updateRes = await User.updateOne(
+      await User.updateOne(
         { _id: userId },
         {
           $inc:   { tokenBalance: -amount },
           $unset: { claimPending: '' },
-          $push:  { claimsHistory: { amount, txHash: wc.transactionHash, at: new Date() } }
+          $push:  { claimsHistory: { amount, txHash, at: new Date() } }
         }
       );
-      console.log('[monitorTx] DB update result:', updateRes);
-
       io?.to(userId).emit('claim_confirmed', { amount });
-      console.log(`[monitorTx] 🏁 Monitoring complete for txId=${txId}`);
+      console.log(`[monitorTx] 🏁 monitorTx terminé pour txId=${txId}`);
       return;
 
     } catch (error) {
-      console.error(`[monitorTx] Error monitoring ${txId}:`, error);
+      console.error(`[monitorTx] Erreur lors du monitoring ${txId}:`, error);
+      retryCount++;
+      if (retryCount >= MAX_RETRIES) {
+        console.error(`[monitorTx] ⚠️ Trop de plantages, on abandonne le monitorTx pour txId=${txId}`);
+        io?.to(userId).emit('claim_error', { message: 'Erreur interne lors du suivi de transaction.' });
+        return;
+      }
       await wait(5000);
     }
   }
 }
+
 
 export const resumePendingTransactions = async () => {
   console.log('[resumePendingTransactions] 🔄 Checking for pending claims on startup');
