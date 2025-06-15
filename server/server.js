@@ -1,4 +1,3 @@
-
 import cors from 'cors';
 import dotenv from 'dotenv';
 import passport from 'passport'; 
@@ -18,6 +17,7 @@ import messageRoutes from './routes/message.js';
 
 import groupRoutes from './routes/group.js';
 import statsRoutes from './routes/stats.js';
+import adminRoutes from './routes/admin.js';
 
 
 
@@ -30,6 +30,9 @@ import User from './models/User.js';
 import path from 'path';
 
 import airdropRoutes from './routes/airdrop.js'   
+
+// 🆕 Import du service de distribution automatique
+import { startAutoTokenDistribution } from './services/autoTokenDistributor.js';
 
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -66,7 +69,13 @@ if (!MONGO_URI) {
 }
 
 mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB connecté avec succès.'))
+    .then(() => {
+        console.log('MongoDB connecté avec succès.');
+        
+        // 🆕 Démarrer le service de distribution automatique après la connexion MongoDB
+        console.log('[SERVER] Démarrage du service de distribution automatique...');
+        startAutoTokenDistribution();
+    })
     .catch(err => {
         console.error('Erreur de connexion MongoDB:', err);
         process.exit(1);
@@ -170,6 +179,7 @@ console.log('[SERVER] Routes API configurées.');
 
 app.use('/api/airdrop', airdropRoutes)
 app.use('/api', groupRoutes);
+app.use('/api/admin', adminRoutes);
 
 // app.use('/api/notifications', notificationRoutes);
 

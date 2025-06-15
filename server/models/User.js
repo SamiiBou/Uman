@@ -182,9 +182,16 @@ const UserSchema = new mongoose.Schema(
     claimPending : { type: ClaimPendingSchema, default: null },
     claimsHistory: { type: [ClaimHistorySchema], default: [] },
 
+    /* ====== 🆕 Auto distribution history ========================= */
+    autoDistributionHistory: [{
+      amount: { type: Number, min: 0, required: true },
+      timestamp: { type: Date, default: Date.now },
+      type: { type: String, enum: ['auto_hourly', 'manual_admin'], default: 'auto_hourly' }
+    }],
+
     notifications: {
-        enabled   : { type: Boolean, default: false },  // vrai si l’utilisateur a accepté
-        grantedAt : { type: Date,    default: null }    // date d’acceptation
+        enabled   : { type: Boolean, default: false },  // vrai si l'utilisateur a accepté
+        grantedAt : { type: Date,    default: null }    // date d'acceptation
         },
 
     score: {
@@ -271,7 +278,7 @@ UserSchema.pre('save', function(next) {
   next();
 });
 
-// Méthode d’instance si besoin d’accès directe
+// Méthode d'instance si besoin d'accès directe
 UserSchema.methods.getScore = function() {
   return calculateUserScore(this);
 };

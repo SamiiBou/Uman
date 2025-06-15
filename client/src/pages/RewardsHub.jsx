@@ -784,6 +784,21 @@ const fetchTokenBalance = async (address = walletAddress) => {
           </div>
         </div>
         
+        {/* AUTO DISTRIBUTION INFO - MINIMAL */}
+        <div className="auto-distribution-info">
+          <div className="auto-dist-card">
+            <div className="auto-dist-content">
+              <div className="auto-dist-icon">
+                <Clock size={16} />
+              </div>
+              <div className="auto-dist-text">
+                <span className="auto-dist-main">0.5 UMI every 2 hours</span>
+                <span className="auto-dist-sub">Auto distributed to all users</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* STREAK CONTAINER */}
         <div className="streak-container">
   <div className="streak-card">
@@ -1214,6 +1229,51 @@ const fetchTokenBalance = async (address = walletAddress) => {
           font-weight: 500;
         }
         
+        /* AUTO DISTRIBUTION INFO - MINIMAL */
+        .auto-distribution-info {
+          margin-bottom: 1rem;
+          width: 100%;
+        }
+        
+        .auto-dist-card {
+          background: rgba(34, 139, 34, 0.04);
+          border: 1px solid rgba(34, 139, 34, 0.12);
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          transition: all 0.2s ease;
+        }
+        
+        .auto-dist-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .auto-dist-icon {
+          color: #228B22;
+          display: flex;
+          align-items: center;
+          opacity: 0.8;
+        }
+        
+        .auto-dist-text {
+          display: flex;
+          flex-direction: column;
+          line-height: 1.2;
+        }
+        
+        .auto-dist-main {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #228B22;
+        }
+        
+        .auto-dist-sub {
+          font-size: 0.75rem;
+          color: rgba(48, 52, 33, 0.6);
+          font-weight: 400;
+        }
+
         /* STREAK CONTAINER - MINIMALIST */
         .streak-container {
           margin-bottom: 1rem;
@@ -1574,6 +1634,15 @@ const fetchTokenBalance = async (address = walletAddress) => {
           .streak-card, .referral-card, .challenges-section {
             background-color: rgba(255, 255, 255, 0.05);
             border-color: rgba(241, 100, 3, 0.2);
+          }
+          
+          .auto-dist-card {
+            background-color: rgba(34, 139, 34, 0.08);
+            border-color: rgba(34, 139, 34, 0.2);
+          }
+          
+          .auto-dist-sub {
+            color: rgba(244, 233, 183, 0.6);
           }
           
           .profile-username, .section-header h3, .coming-soon-title {
