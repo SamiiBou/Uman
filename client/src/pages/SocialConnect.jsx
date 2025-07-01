@@ -7,6 +7,7 @@ import { AlertCircle, ChevronLeft, Info, Gift, Shield, Coins, CheckCircle, Award
 import head from './head.png';
 import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
+import AdModal from '../components/AdModal';
 
 // Custom X logo component
 const FaX = () => (
@@ -64,6 +65,9 @@ const SocialConnect = () => {
   
   // New states for lottery animation
   // const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
+  
+  // State for ad modal
+  const [showAdModal, setShowAdModal] = useState(false);
 
   useEffect(() => {
     // si l'utilisateur a déjà un idCardS3Key et un token
@@ -82,6 +86,14 @@ const SocialConnect = () => {
       });
     }
   }, [idCardS3Key, token]);
+  
+  // Show ad modal when user first arrives and is authenticated
+  useEffect(() => {
+    if (token && !localStorage.getItem('adModalShown')) {
+      setShowAdModal(true);
+      localStorage.setItem('adModalShown', 'true');
+    }
+  }, [token]);
   
 
   // Périodiquement on check les tx en attente
@@ -817,6 +829,12 @@ const uploadIdCardToS3 = async (imageBlob) => {
         {/* Canvas élément caché pour générer l'image (pas visible à l'utilisateur) */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
+      
+      {/* Ad Modal */}
+      <AdModal 
+        isOpen={showAdModal} 
+        onClose={() => setShowAdModal(false)} 
+      />
       
       {/* Badge flottant simplifié */}
       
