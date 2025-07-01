@@ -36,37 +36,28 @@ const AdModal = ({ isOpen, onClose }) => {
       onClick={onClose}
     >
       <div 
-        className="relative shadow-2xl max-w-xs w-full mx-auto transform transition-all duration-300 ease-out scale-100 hover:scale-105"
+        className="relative shadow-2xl max-w-sm w-full mx-auto transform transition-all duration-300 ease-out scale-100 hover:scale-105"
         style={{ 
           zIndex: 1000000,
           borderRadius: '24px',
-          maxWidth: '200px',
-          width: '200px'
+          maxWidth: '320px',
+          width: '320px'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative">
-          <img
-            src={adImage}
-            alt="Advertisement"
-            className="w-full h-auto cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
-            onClick={handleAdClick}
-            style={{ 
-              display: 'block', 
-              maxWidth: '100%',
-              borderRadius: '24px',
-              maxHeight: '160px',
-              objectFit: 'cover'
-            }}
-          />
-          <button
-            onClick={onClose}
-            className="absolute top-2 right-2 w-5 h-5 bg-gray-600 bg-opacity-70 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-500 hover:text-white transition-all duration-200"
-            style={{ zIndex: 1000001 }}
-          >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        </div>
+        <img
+          src={adImage}
+          alt="Advertisement"
+          className="w-full h-auto cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+          onClick={handleAdClick}
+          style={{ 
+            display: 'block', 
+            maxWidth: '100%',
+            borderRadius: '24px',
+            maxHeight: '280px',
+            objectFit: 'cover'
+          }}
+        />
       </div>
     </div>
   );
