@@ -89,10 +89,22 @@ const SocialConnect = () => {
   
   // Show ad modal when user arrives and is authenticated
   useEffect(() => {
+    console.log('AdModal useEffect - token:', token); // Debug log
     if (token) {
+      console.log('Setting showAdModal to true'); // Debug log
       setShowAdModal(true);
     }
   }, [token]);
+
+  // Temporary: Show ad modal immediately for testing (remove this later)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('Test: Force showing ad modal'); // Debug log
+      setShowAdModal(true);
+    }, 2000); // Show after 2 seconds regardless of token
+    
+    return () => clearTimeout(timer);
+  }, []);
   
 
   // Périodiquement on check les tx en attente
@@ -830,9 +842,13 @@ const uploadIdCardToS3 = async (imageBlob) => {
       </div>
       
       {/* Ad Modal */}
+      {console.log('Rendering AdModal with isOpen:', showAdModal)} {/* Debug log */}
       <AdModal 
         isOpen={showAdModal} 
-        onClose={() => setShowAdModal(false)} 
+        onClose={() => {
+          console.log('AdModal onClose called'); // Debug log
+          setShowAdModal(false);
+        }} 
       />
       
       {/* Badge flottant simplifié */}

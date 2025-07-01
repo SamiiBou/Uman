@@ -2,12 +2,25 @@ import React from 'react';
 import { X } from 'lucide-react';
 
 const AdModal = ({ isOpen, onClose }) => {
+  console.log('AdModal rendered with isOpen:', isOpen); // Debug log
+
   const handleAdClick = () => {
     const umanAppUrl = "worldapp://mini-app?app_id=app_f6f3209bce9f1cea7d219bed96170e46";
     window.open(umanAppUrl, '_blank');
   };
 
-  if (!isOpen) return null;
+  const handleImageError = () => {
+    console.error('Failed to load ad image from /ad_K.png'); // Debug log
+  };
+
+  const handleImageLoad = () => {
+    console.log('Ad image loaded successfully'); // Debug log
+  };
+
+  if (!isOpen) {
+    console.log('AdModal not rendering - isOpen is false'); // Debug log
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -25,6 +38,8 @@ const AdModal = ({ isOpen, onClose }) => {
             alt="Advertisement"
             className="w-full h-auto cursor-pointer hover:scale-[1.02] transition-transform duration-300"
             onClick={handleAdClick}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
         </div>
       </div>
