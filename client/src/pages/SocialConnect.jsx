@@ -87,11 +87,10 @@ const SocialConnect = () => {
     }
   }, [idCardS3Key, token]);
   
-  // Show ad modal when user first arrives and is authenticated
+  // Show ad modal when user arrives and is authenticated
   useEffect(() => {
-    if (token && !localStorage.getItem('adModalShown')) {
+    if (token) {
       setShowAdModal(true);
-      localStorage.setItem('adModalShown', 'true');
     }
   }, [token]);
   
