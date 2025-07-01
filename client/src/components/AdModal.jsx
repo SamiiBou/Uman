@@ -19,7 +19,7 @@ const AdModal = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 backdrop-blur-sm"
+      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4"
       style={{ 
         position: 'fixed',
         top: 0,
@@ -29,12 +29,14 @@ const AdModal = ({ isOpen, onClose }) => {
         zIndex: 999999,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)'
       }}
       onClick={onClose}
     >
       <div 
-        className="relative bg-white shadow-2xl max-w-xs w-full mx-auto transform transition-all duration-300 ease-out scale-100 hover:scale-105"
+        className="relative shadow-2xl max-w-xs w-full mx-auto transform transition-all duration-300 ease-out scale-100 hover:scale-105"
         style={{ 
           zIndex: 1000000,
           borderRadius: '24px',
@@ -43,15 +45,7 @@ const AdModal = ({ isOpen, onClose }) => {
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 w-6 h-6 bg-gray-800 bg-opacity-80 text-white rounded-full flex items-center justify-center hover:bg-opacity-100 transition-all duration-200"
-          style={{ zIndex: 1000001 }}
-        >
-          <X className="h-3 w-3" />
-        </button>
-        
-        <div className="p-2">
+        <div className="relative">
           <img
             src={adImage}
             alt="Advertisement"
@@ -60,11 +54,18 @@ const AdModal = ({ isOpen, onClose }) => {
             style={{ 
               display: 'block', 
               maxWidth: '100%',
-              borderRadius: '20px',
+              borderRadius: '24px',
               maxHeight: '160px',
               objectFit: 'cover'
             }}
           />
+          <button
+            onClick={onClose}
+            className="absolute top-2 right-2 w-5 h-5 bg-gray-600 bg-opacity-70 text-gray-300 rounded-full flex items-center justify-center hover:bg-gray-500 hover:text-white transition-all duration-200"
+            style={{ zIndex: 1000001 }}
+          >
+            <X className="h-2.5 w-2.5" />
+          </button>
         </div>
       </div>
     </div>
