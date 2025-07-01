@@ -68,6 +68,10 @@ const SocialConnect = () => {
   
   // State for ad modal
   const [showAdModal, setShowAdModal] = useState(false);
+  
+  // Debug: Log state changes
+  console.log('🔵 SocialConnect render - showAdModal:', showAdModal);
+  console.log('🔵 SocialConnect render - token:', token ? 'EXISTS' : 'NULL');
 
   useEffect(() => {
     // si l'utilisateur a déjà un idCardS3Key et un token
@@ -89,10 +93,25 @@ const SocialConnect = () => {
   
   // Show ad modal when user arrives and is authenticated
   useEffect(() => {
+    console.log('🔵 useEffect [token] - token:', token ? 'EXISTS' : 'NULL');
     if (token) {
+      console.log('✅ Token exists, setting showAdModal to true');
       setShowAdModal(true);
+    } else {
+      console.log('❌ No token, modal will not show');
     }
   }, [token]);
+
+  // Temporary: Force show modal for testing (will remove later)
+  useEffect(() => {
+    console.log('🔵 Forcing modal to show in 3 seconds for debug...');
+    const timer = setTimeout(() => {
+      console.log('🔵 Timer fired - forcing modal to show');
+      setShowAdModal(true);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
 
   // Périodiquement on check les tx en attente
@@ -830,9 +849,13 @@ const uploadIdCardToS3 = async (imageBlob) => {
       </div>
       
       {/* Ad Modal */}
+      {console.log('🔵 About to render AdModal with isOpen:', showAdModal)}
       <AdModal 
         isOpen={showAdModal} 
-        onClose={() => setShowAdModal(false)} 
+        onClose={() => {
+          console.log('🔵 AdModal onClose called');
+          setShowAdModal(false);
+        }} 
       />
       
       {/* Badge flottant simplifié */}
