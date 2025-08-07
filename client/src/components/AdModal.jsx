@@ -89,28 +89,28 @@ const AdModal = ({ isOpen, onClose }) => {
             style={{
               marginTop: 8,
               textAlign: 'center',
-              color: '#e6ffe6',
+              color: '#ffffff',
               fontSize: 18,
               fontWeight: 800,
               letterSpacing: 0.2
             }}
           >
-            Trade stocks facilement
+            Trade stocks instantly
           </h3>
           <p
             style={{
               marginTop: 6,
               textAlign: 'center',
-              color: '#9fb3a5',
-              fontSize: 13,
+              color: '#dfe7e2',
+              fontSize: 14,
               lineHeight: 1.35
             }}
           >
-            Ouvrez la mini‑app et commencez en quelques secondes.
+            Open the mini app and get started in seconds.
           </p>
         <button
           type="button"
-          aria-label="Ouvrir dans World App"
+          aria-label="Open in World App"
           onClick={handleAdClick}
           className="w-full cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
           style={{
@@ -120,7 +120,7 @@ const AdModal = ({ isOpen, onClose }) => {
             padding: '14px 16px',
             borderRadius: '24px',
             background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f10 100%)',
-            color: '#e6ffe6',
+            color: '#ffffff',
             fontSize: '16px',
             fontWeight: 700,
             textAlign: 'center',
@@ -129,7 +129,7 @@ const AdModal = ({ isOpen, onClose }) => {
             boxShadow: '0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)'
           }}
         >
-          Ouvrir dans World App
+          Open in World App
         </button>
           <button
             type="button"
@@ -141,15 +141,15 @@ const AdModal = ({ isOpen, onClose }) => {
               padding: '10px 8px',
               borderRadius: 16,
               background: 'transparent',
-              color: '#9fb3a5',
-              fontSize: 13,
-              fontWeight: 600,
+              color: '#dfe7e2',
+              fontSize: 14,
+              fontWeight: 700,
               textAlign: 'center',
               letterSpacing: 0.2,
               border: 'none'
             }}
           >
-            Plus tard
+            Maybe later
           </button>
         </div>
       </div>
