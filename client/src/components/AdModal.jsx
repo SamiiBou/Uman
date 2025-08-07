@@ -62,10 +62,11 @@ const AdModal = ({ isOpen, onClose }) => {
           type="button"
           aria-label="Trade stocks"
           onClick={handleAdClick}
-          className="w-full cursor-pointer mt-6 transition-transform duration-300 hover:scale-[1.02]"
+          className="w-full cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
           style={{
             display: 'block',
             width: '100%',
+            marginTop: '24px',
             padding: '14px 16px',
             borderRadius: '24px',
             background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f10 100%)',
