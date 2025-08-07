@@ -45,6 +45,28 @@ const AdModal = ({ isOpen, onClose }) => {
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <button
+          type="button"
+          aria-label="Fermer"
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '9999px',
+            background: 'rgba(0,0,0,0.45)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#ffffff',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <X size={18} />
+        </button>
         <img
           src={adImage}
           alt="Advertisement"
@@ -58,15 +80,43 @@ const AdModal = ({ isOpen, onClose }) => {
             objectFit: 'cover'
           }}
         />
+        <div
+          style={{
+            padding: '14px 4px 4px 4px'
+          }}
+        >
+          <h3
+            style={{
+              marginTop: 8,
+              textAlign: 'center',
+              color: '#e6ffe6',
+              fontSize: 18,
+              fontWeight: 800,
+              letterSpacing: 0.2
+            }}
+          >
+            Trade stocks facilement
+          </h3>
+          <p
+            style={{
+              marginTop: 6,
+              textAlign: 'center',
+              color: '#9fb3a5',
+              fontSize: 13,
+              lineHeight: 1.35
+            }}
+          >
+            Ouvrez la mini‑app et commencez en quelques secondes.
+          </p>
         <button
           type="button"
-          aria-label="Trade stocks"
+          aria-label="Ouvrir dans World App"
           onClick={handleAdClick}
           className="w-full cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
           style={{
             display: 'block',
             width: '100%',
-            marginTop: '24px',
+            marginTop: 16,
             padding: '14px 16px',
             borderRadius: '24px',
             background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f10 100%)',
@@ -79,8 +129,29 @@ const AdModal = ({ isOpen, onClose }) => {
             boxShadow: '0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)'
           }}
         >
-          trade stocks
+          Ouvrir dans World App
         </button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              display: 'block',
+              width: '100%',
+              marginTop: 10,
+              padding: '10px 8px',
+              borderRadius: 16,
+              background: 'transparent',
+              color: '#9fb3a5',
+              fontSize: 13,
+              fontWeight: 600,
+              textAlign: 'center',
+              letterSpacing: 0.2,
+              border: 'none'
+            }}
+          >
+            Plus tard
+          </button>
+        </div>
       </div>
     </div>
   );
