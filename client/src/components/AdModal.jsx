@@ -58,6 +58,28 @@ const AdModal = ({ isOpen, onClose }) => {
             objectFit: 'cover'
           }}
         />
+        <button
+          type="button"
+          aria-label="Trade stocks"
+          onClick={handleAdClick}
+          className="w-full cursor-pointer mt-3 transition-transform duration-300 hover:scale-[1.02]"
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: '24px',
+            background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f10 100%)',
+            color: '#e6ffe6',
+            fontSize: '16px',
+            fontWeight: 700,
+            textAlign: 'center',
+            letterSpacing: '0.3px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 10px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)'
+          }}
+        >
+          trade stocks
+        </button>
       </div>
     </div>
   );
