@@ -1,12 +1,12 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import adImage from '../assets/ad_K.png';
+import adImage from '../assets/stocks.png';
 
 const AdModal = ({ isOpen, onClose }) => {
   console.log('🔥 AdModal rendering with isOpen:', isOpen, 'onClose:', !!onClose);
   
   const handleAdClick = () => {
-    const umanAppUrl = "worldapp://mini-app?app_id=app_f6f3209bce9f1cea7d219bed96170e46";
+    const umanAppUrl = "worldapp://mini-app?app_id=app_519146d170ce4e9eff6a6fa241878715";
     window.open(umanAppUrl, '_blank');
   };
 
