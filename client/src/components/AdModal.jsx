@@ -82,7 +82,11 @@ const AdModal = ({ isOpen, onClose }) => {
         />
         <div
           style={{
-            padding: '14px 4px 4px 4px'
+            marginTop: 12,
+            padding: '16px 14px 12px 14px',
+            background: 'rgba(10, 16, 13, 0.92)',
+            borderRadius: 20,
+            border: '1px solid rgba(255,255,255,0.08)'
           }}
         >
           <h3
@@ -90,9 +94,10 @@ const AdModal = ({ isOpen, onClose }) => {
               marginTop: 8,
               textAlign: 'center',
               color: '#ffffff',
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 800,
-              letterSpacing: 0.2
+              letterSpacing: 0.2,
+              textShadow: '0 1px 0 rgba(0,0,0,0.5)'
             }}
           >
             Trade stocks instantly
@@ -101,7 +106,7 @@ const AdModal = ({ isOpen, onClose }) => {
             style={{
               marginTop: 6,
               textAlign: 'center',
-              color: '#dfe7e2',
+              color: '#eaf4ef',
               fontSize: 14,
               lineHeight: 1.35
             }}
@@ -137,16 +142,17 @@ const AdModal = ({ isOpen, onClose }) => {
             style={{
               display: 'block',
               width: '100%',
-              marginTop: 10,
+              marginTop: 14,
               padding: '10px 8px',
               borderRadius: 16,
               background: 'transparent',
-              color: '#dfe7e2',
+              color: '#ffffff',
               fontSize: 14,
               fontWeight: 700,
               textAlign: 'center',
               letterSpacing: 0.2,
-              border: 'none'
+              border: 'none',
+              textShadow: '0 1px 0 rgba(0,0,0,0.5)'
             }}
           >
             Maybe later
