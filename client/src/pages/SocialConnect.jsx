@@ -4,8 +4,9 @@ import axios from 'axios';
 import { FaTelegramPlane, FaDiscord, FaArrowLeft, FaCheckCircle, FaLock } from 'react-icons/fa';
 import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { AlertCircle, ChevronLeft, Info, Gift, Shield, Coins, CheckCircle, Award, Ticket } from "lucide-react";
-import head from './head.png';
-import card from './idCard.png';
+// Images PNG supprimées pour réduire Fast Data Transfer
+// import head from './head.png';
+// import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
 import AdModal from '../components/AdModal';
 
@@ -358,12 +359,14 @@ const uploadIdCardToS3 = async (imageBlob) => {
     `;
     document.head.appendChild(fontPreloader);
 
-    const img = new Image();
-    img.src = card;
-    setTimeout(() => {
-      if (img.complete) renderCard(img);
-      else img.onload = () => renderCard(img);
-    }, 100);
+    // Images PNG supprimées - désactiver génération de carte ID
+    console.warn('ID card generation disabled - images removed to reduce bandwidth');
+    // const img = new Image();
+    // img.src = card;
+    // setTimeout(() => {
+    //   if (img.complete) renderCard(img);
+    //   else img.onload = () => renderCard(img);
+    // }, 100);
   };
 
   // MODIFICATION 3: Modified renderCard to prevent re-uploads
@@ -597,7 +600,9 @@ const uploadIdCardToS3 = async (imageBlob) => {
             <div className="logo-and-card-container">
               <div className="logo-container">
                 <div className="logo-glow"></div>
-                <img src={head} alt="Logo" className="logo" />
+                {/* Image PNG supprimée pour réduire Fast Data Transfer */}
+                {/* <img src={head} alt="Logo" className="logo" /> */}
+                <div className="logo-placeholder" style={{ width: '120px', height: '120px', borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', color: 'white' }}>U</div>
               </div>
               
               <div className="header-text">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import adImage from '../assets/stocks.png';
+// Image PNG supprimée pour réduire Fast Data Transfer
+// import adImage from '../assets/stocks.png';
 
 const AdModal = ({ isOpen, onClose }) => {
   const handleAdClick = () => {
@@ -59,7 +60,8 @@ const AdModal = ({ isOpen, onClose }) => {
           <X size={14} />
         </button>
 
-        <img
+        {/* Image PNG supprimée pour réduire Fast Data Transfer */}
+        {/* <img
           src={adImage}
           alt="Investment"
           style={{ 
@@ -69,7 +71,24 @@ const AdModal = ({ isOpen, onClose }) => {
             cursor: 'pointer'
           }}
           onClick={handleAdClick}
-        />
+        /> */}
+        <div 
+          style={{ 
+            width: '100%',
+            height: '200px',
+            background: 'linear-gradient(135deg, #10b981, #059669)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '3rem',
+            fontWeight: 'bold',
+            color: 'white',
+            cursor: 'pointer'
+          }}
+          onClick={handleAdClick}
+        >
+          💰 Invest
+        </div>
 
         <div style={{ padding: '20px' }}>
           <button

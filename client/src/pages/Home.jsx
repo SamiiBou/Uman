@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { MiniKit, Permission } from "@worldcoin/minikit-js";
-import head from './head.png';
-import UmiToken from './Umi_Token.png'; // Image du token UMI
+// Images PNG supprimées pour réduire Fast Data Transfer
+// import head from './head.png';
+// import UmiToken from './Umi_Token.png'; // Image du token UMI
 import AskNotifPermission from './AskNotifPermission';
 import useDebugNotifications from './useDebugNotifications';
 
@@ -436,7 +437,9 @@ const Home = () => {
       <AskNotifPermission />
       <div className="content-container">
         <div className="logo-container">
-          <img src={head} alt="Logo" className="logo" />
+          {/* Image PNG supprimée pour réduire Fast Data Transfer */}
+          {/* <img src={head} alt="Logo" className="logo" /> */}
+          <div style={{ width: '300px', height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #ec5e03, #f6dcb1)', borderRadius: '50%', fontSize: '6rem', fontWeight: 'bold', color: 'white', boxShadow: '0 10px 40px rgba(236, 94, 3, 0.3)' }}>U</div>
         </div>
         
         <motion.div
@@ -580,7 +583,9 @@ const Home = () => {
             <div className="token-content">
               <h2 className="token-title">Tokens Received!</h2>
               <div className="token-icon-container">
-                <img src={UmiToken} alt="UMI Token" className="token-icon" />
+                {/* Image PNG supprimée pour réduire Fast Data Transfer */}
+                {/* <img src={UmiToken} alt="UMI Token" className="token-icon" /> */}
+                <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: 'linear-gradient(135deg, #ec5e03, #f59f29)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem', fontWeight: 'bold', color: 'white', boxShadow: '0 8px 30px rgba(236, 94, 3, 0.4)' }}>UMI</div>
               </div>
               <p className="token-amount">{tokenAmount} UMI</p>
               <div className="token-description">
