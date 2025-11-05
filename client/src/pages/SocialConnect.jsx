@@ -7,7 +7,7 @@ import { AlertCircle, ChevronLeft, Info, Gift, Shield, Coins, CheckCircle, Award
 import head from './head.png';
 import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
-import AdModal from '../components/AdModal';
+import AdSenseAuto from '../components/AdSenseAuto';
 
 // Custom X logo component
 const FaX = () => (
@@ -65,53 +65,23 @@ const SocialConnect = () => {
   
   // New states for lottery animation
   // const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
-  
-  // State for ad modal
-  const [showAdModal, setShowAdModal] = useState(false);
-  
-  // Debug: Log state changes
-  console.log('🔵 SocialConnect render - showAdModal:', showAdModal);
-  console.log('🔵 SocialConnect render - token:', token ? 'EXISTS' : 'NULL');
 
-  useEffect(() => {
-    // si l'utilisateur a déjà un idCardS3Key et un token
-    if (idCardS3Key && token) {
-      setShowIdCard(true);
-      setIdCardVisible(false);
-      // interroger ton endpoint pour obtenir une URL fraîche
-      axios.get(`${API_BASE_URL}/s3/image/${encodeURIComponent(idCardS3Key)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      .then(({ data }) => {
-        setIdCardImageUrl(data.url);
-      })
-      .catch(err => {
-        console.error("Erreur récupération presigned URL :", err);
-      });
-    }
-  }, [idCardS3Key, token]);
-  
-  // Show ad modal when user arrives and is authenticated
-  useEffect(() => {
-    console.log('🔵 useEffect [token] - token:', token ? 'EXISTS' : 'NULL');
-    if (token) {
-      console.log('✅ Token exists, setting showAdModal to true');
-      setShowAdModal(true);
-    } else {
-      console.log('❌ No token, modal will not show');
-    }
-  }, [token]);
-
-  // Temporary: Force show modal for testing (will remove later)
-  useEffect(() => {
-    console.log('🔵 Forcing modal to show in 3 seconds for debug...');
-    const timer = setTimeout(() => {
-      console.log('🔵 Timer fired - forcing modal to show');
-      setShowAdModal(true);
-    }, 3000);
-    
-    return () => clearTimeout(timer);
-  }, []);
+  // Désactivé : la carte ID ne s'affiche plus
+  // useEffect(() => {
+  //   if (idCardS3Key && token) {
+  //     setShowIdCard(true);
+  //     setIdCardVisible(false);
+  //     axios.get(`${API_BASE_URL}/s3/image/${encodeURIComponent(idCardS3Key)}`, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     })
+  //     .then(({ data }) => {
+  //       setIdCardImageUrl(data.url);
+  //     })
+  //     .catch(err => {
+  //       console.error("Erreur récupération presigned URL :", err);
+  //     });
+  //   }
+  // }, [idCardS3Key, token]);
   
 
   // Périodiquement on check les tx en attente
@@ -199,41 +169,37 @@ const SocialConnect = () => {
   //   }
   // }, [connectedAccounts]);
 
-  // MODIFICATION 2: Modified useEffect to avoid regenerating if S3 key exists
-  useEffect(() => {
-        const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
-        if (linkedCount === 3 && !idCardS3Key) {
-          setShowIdCard(true);
-          setIdCardVisible(false);
-    
-          // Fetch the latest user record to confirm all socials are saved
-          axios.get(`${API_BASE_URL}/auth/me`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {}
-          })
-          .then(({ data }) => {
-            // check that backend really has all three networks
-            const social = data.social || {};
-            if (social.twitter && social.telegram && social.discord) {
-              generateIdCardImage();
-            } else {
-              console.warn('Not all networks persisted yet, waiting...');
-            }
-          })
-          .catch(err => {
-            console.error('Error fetching user after linking:', err);
-          });
-        } else if (linkedCount === 3 && idCardS3Key) {
-          // already uploaded: just set the URL
-          setShowIdCard(true);
-          setIdCardVisible(false);
-          setIdCardImageUrl(s3CardUrl);
-        }
-      }, [connectedAccounts, idCardS3Key, s3CardUrl, token]);
+  // Désactivé : la carte ID ne s'affiche plus
+  // useEffect(() => {
+  //   const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
+  //   if (linkedCount === 3 && !idCardS3Key) {
+  //     setShowIdCard(true);
+  //     setIdCardVisible(false);
+  //     axios.get(`${API_BASE_URL}/auth/me`, {
+  //       headers: token ? { Authorization: `Bearer ${token}` } : {}
+  //     })
+  //     .then(({ data }) => {
+  //       const social = data.social || {};
+  //       if (social.twitter && social.telegram && social.discord) {
+  //         generateIdCardImage();
+  //       } else {
+  //         console.warn('Not all networks persisted yet, waiting...');
+  //       }
+  //     })
+  //     .catch(err => {
+  //       console.error('Error fetching user after linking:', err);
+  //     });
+  //   } else if (linkedCount === 3 && idCardS3Key) {
+  //     setShowIdCard(true);
+  //     setIdCardVisible(false);
+  //     setIdCardImageUrl(s3CardUrl);
+  //   }
+  // }, [connectedAccounts, idCardS3Key, s3CardUrl, token]);
 
-  // Toggle card visibility
-  const toggleIdCardVisibility = () => {
-    setIdCardVisible(prev => !prev);
-  };
+  // Désactivé : fonction de toggle de la carte ID
+  // const toggleIdCardVisibility = () => {
+  //   setIdCardVisible(prev => !prev);
+  // };
 
   // Modification de la fonction testDownloadIdCard pour utiliser la route backend
   const testDownloadIdCard = async () => {
@@ -635,71 +601,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
         </header>
 
         <div className="main-content">
-          {/* Show ID Card Button - Always display when card is generated but hidden */}
-          {showIdCard && !idCardVisible && (
-            <button 
-              className="toggle-card-button show-card-button" 
-              onClick={toggleIdCardVisibility}
-            >
-              Show ID Card
-            </button>
-          )}
-          
-          {/* Display the generated ID Card image */}
-          {showIdCard && idCardImageUrl && idCardVisible && (
-            <div className="id-card-container">
-                <img 
-                  src={idCardImageUrl} 
-                  alt="Human ID Card" 
-                  className="id-card-image" 
-                />
-                
-                {/* NOUVELLE VERSION AMÉLIORÉE DU MESSAGE NFT */}
-                <div className="nft-message-enhanced">
-                  <div className="nft-badge">NFT</div>
-                  <div className="nft-content">
-                    <h4>Exclusive Uman ID Card NFT</h4>
-                    <p>Your exclusive Uman ID Card NFT is coming soon—proof you're authentically human!</p>
-                    {/* <div className="nft-features">
-                      <span className="nft-feature"><Award size={14} /> Exclusive</span>
-                      <span className="nft-feature"><Shield size={14} /> Verifiable</span>
-                      <span className="nft-feature"><Gift size={14} /> Collectible</span>
-                    </div> */}
-                  </div>
-                </div>
-                
-                {/* Nouveau bouton d'upload manuel */}
-                {/* <button 
-                  className="upload-card-button" 
-                  onClick={() => {
-                    // Convertir l'image data URL en blob pour l'upload
-                    fetch(idCardImageUrl)
-                      .then(res => res.blob())
-                      .then(blob => uploadIdCardToS3(blob));
-                  }}
-                  disabled={isUploadingCard}
-                >
-                  {isUploadingCard ? 'Uploading...' : 'Save to Cloud'}
-                </button>
-
-                <button 
-  className="test-download-button" 
-  onClick={testDownloadIdCard}
-  disabled={!idCardImageUrl}
->
-  Test Download
-</button> */}
-                
-                {/* Hide Card Button */}
-                <button 
-                  className="toggle-card-button hide-card-button" 
-                  onClick={toggleIdCardVisibility}
-                >
-                  Hide ID Card
-                </button>
-              </div>
-          )}
-          
           <div className="content-body">
             <div className="accounts-grid">
               {socialAccounts.map((account) => (
@@ -772,6 +673,14 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 <Info size={16} />
                 <span>Why connect?</span>
               </button>
+              
+              {/* AdSense Banner - directement sous le bouton */}
+              <div className="ad-container-social">
+                <AdSenseAuto 
+                  slot="YOUR_AD_SLOT_ID"
+                  style={{ maxWidth: '320px', width: '100%' }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -847,16 +756,6 @@ const uploadIdCardToS3 = async (imageBlob) => {
         {/* Canvas élément caché pour générer l'image (pas visible à l'utilisateur) */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
-      
-      {/* Ad Modal */}
-      {console.log('🔵 About to render AdModal with isOpen:', showAdModal)}
-      <AdModal 
-        isOpen={showAdModal} 
-        onClose={() => {
-          console.log('🔵 AdModal onClose called');
-          setShowAdModal(false);
-        }} 
-      />
       
       {/* Badge flottant simplifié */}
       
@@ -1470,15 +1369,28 @@ const uploadIdCardToS3 = async (imageBlob) => {
         /* Action buttons */
         .action-buttons {
           display: flex;
+          flex-direction: column;
+          align-items: center;
           justify-content: center;
-          margin-top: 0.4rem; /* Réduit de 0.5rem à 0.4rem */
-          margin-bottom: 45px; /* Réduit de 50px à 45px */
-          padding-bottom: 0.9rem; /* Réduit de 1rem à 0.9rem */
+          margin-top: 0.4rem;
+          margin-bottom: 45px;
+          padding-bottom: 0.9rem;
+          gap: 10px;
         }
         
         /* New style for the single "Why connect?" button */
         .action-buttons.why-connect-only {
-          margin-top: 1.3rem; /* Réduit de 1.5rem à 1.3rem */
+          margin-top: 1.3rem;
+        }
+        
+        /* AdSense container */
+        .ad-container-social {
+          width: 100%;
+          max-width: 320px;
+          display: flex;
+          justify-content: center;
+          padding: 8px 0 0 0;
+          margin: 0;
         }
         
         .info-button {

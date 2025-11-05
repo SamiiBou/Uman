@@ -21,8 +21,8 @@ const FaX = () => (
 );
 
 // Token contract details (copied from ConnectAccounts)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
-const BACKEND_URL = 'https://uman.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
+const BACKEND_URL = 'https://a88769ca175c.ngrok.app/api';
 const API_TIMEOUT = 15000;
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 

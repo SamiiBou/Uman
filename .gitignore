@@ -1,89 +1,28 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables
 .env
-  server/node_modules/.bin/dns
-        server/node_modules/.bin/tomahawk
-        server/node_modules/@worldcoin/minikit-js/build/chunk-ERUOM2FB.js
-        server/node_modules/@worldcoin/minikit-js/build/minikit-provider.cjs
-        server/node_modules/@worldcoin/minikit-js/build/minikit-provider.d.cts
-        server/node_modules/@worldcoin/minikit-js/build/minikit-provider.d.ts
-        server/node_modules/@worldcoin/minikit-js/build/minikit-provider.js
-        server/node_modules/after/
-        server/node_modules/arraybuffer.slice/
-        server/node_modules/assert-plus/
-        server/node_modules/async/
-        server/node_modules/aws-sign/
-        server/node_modules/base64-arraybuffer/
-        server/node_modules/base64id/
-        server/node_modules/basic-auth/
-        server/node_modules/better-assert/
-        server/node_modules/binaryheap/
-        server/node_modules/blob/
-        server/node_modules/boom/
-        server/node_modules/buffer-crc32/
-        server/node_modules/buffercursor/
-        server/node_modules/callsite/
-        server/node_modules/colors/
-        server/node_modules/commander/
-        server/node_modules/component-bind/
-        server/node_modules/component-emitter/
-        server/node_modules/component-inherit/
-        server/node_modules/connect/
-        server/node_modules/cookie-jar/
-        server/node_modules/cryptiles/
-        server/node_modules/cycle/
-        server/node_modules/defaultable/
-        server/node_modules/dns/
-        server/node_modules/emitter/
-        server/node_modules/engine.io-client/
-        server/node_modules/engine.io-parser/
-        server/node_modules/engine.io/
-        server/node_modules/errorhandler/
-        server/node_modules/extsprintf/
-        server/node_modules/eyes/
-        server/node_modules/finished/
-        server/node_modules/forever-agent/
-        server/node_modules/global/
-        server/node_modules/has-binary-data/
-        server/node_modules/has-cors/
-        server/node_modules/hawk/
-        server/node_modules/hbo-dnsd/
-        server/node_modules/hoek/
-        server/node_modules/indexof/
-        server/node_modules/json-stringify-safe/
-        server/node_modules/json3/
-        server/node_modules/morgan/
-        server/node_modules/nan/
-        server/node_modules/native-dns-cache/
-        server/node_modules/native-dns-packet/
-        server/node_modules/native-dns/
-        server/node_modules/node-options/
-        server/node_modules/node-uuid/
-        server/node_modules/oauth-sign/
-        server/node_modules/object-component/
-        server/node_modules/optimist/
-        server/node_modules/options/
-        server/node_modules/parsejson/
-        server/node_modules/parseqs/
-        server/node_modules/parseuri/
-        server/node_modules/pkginfo/
-        server/node_modules/request/
-        server/node_modules/sntp/
-        server/node_modules/socket.io-adapter/
-        server/node_modules/socket.io-client/
-        server/node_modules/socket.io-parser/
-        server/node_modules/socket.io/
-        server/node_modules/stack-trace/
-        server/node_modules/tinycolor/
-        server/node_modules/to-array/
-        server/node_modules/tomahawk-plugin-kv-memory-store/
-        server/node_modules/tomahawk/
-        server/node_modules/tunnel-agent/
-        server/node_modules/utf8/
-        server/node_modules/verror/
-        server/node_modules/winston/
-        server/node_modules/wordwrap/
-        server/node_modules/xmlhttprequest/
-           contracts/contracts/script/fund.js
-        contracts/contracts/script/node_modules/
-        contracts/contracts/script/package-lock.json
-        contracts/contracts/script/package.json
-        server/anaut.js
+*.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+.cache/

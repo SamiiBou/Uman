@@ -81,14 +81,14 @@ Pour utiliser les fonctionnalités OAuth avec les différentes plateformes, vous
 1. Inscrivez-vous sur le [Twitter Developer Portal](https://developer.twitter.com/)
 2. Créez un nouveau projet et une application
 3. Configurez les paramètres OAuth (activez l'OAuth à 3 pattes)
-4. Ajoutez l'URL de callback: `http://https://uman.onrender.com /api/auth/twitter/callback`
+4. Ajoutez l'URL de callback: `http://https://a88769ca175c.ngrok.app /api/auth/twitter/callback`
 5. Récupérez votre clé API et votre secret API
 
 ### Facebook
 1. Inscrivez-vous sur [Facebook Developers](https://developers.facebook.com/)
 2. Créez une nouvelle application
 3. Ajoutez le produit Facebook Login
-4. Configurez les URI de redirection OAuth valides: `http://https://uman.onrender.com /api/auth/facebook/callback`
+4. Configurez les URI de redirection OAuth valides: `http://https://a88769ca175c.ngrok.app /api/auth/facebook/callback`
 5. Récupérez votre ID d'application et votre secret d'application
 
 ### Google
@@ -96,14 +96,14 @@ Pour utiliser les fonctionnalités OAuth avec les différentes plateformes, vous
 2. Créez un nouveau projet
 3. Configurez l'écran de consentement OAuth
 4. Créez des identifiants d'ID client OAuth
-5. Ajoutez l'URI de redirection autorisée: `http://https://uman.onrender.com /api/auth/google/callback`
+5. Ajoutez l'URI de redirection autorisée: `http://https://a88769ca175c.ngrok.app /api/auth/google/callback`
 6. Récupérez votre ID client et votre secret client
 
 ### Instagram
 1. Inscrivez-vous sur [Facebook Developers](https://developers.facebook.com/)
 2. Créez une nouvelle application (ou utilisez votre application Facebook)
 3. Ajoutez le produit Instagram Basic Display
-4. Configurez les URI de redirection OAuth valides: `http://https://uman.onrender.com /api/auth/instagram/callback`
+4. Configurez les URI de redirection OAuth valides: `http://https://a88769ca175c.ngrok.app /api/auth/instagram/callback`
 5. Récupérez votre ID client et votre secret client
 
 Ajoutez ensuite ces clés dans votre fichier `.env`.

@@ -5,7 +5,7 @@ import { gsap } from 'gsap';
 import * as d3 from 'd3';
 import { FaProjectDiagram, FaSearch, FaMinus, FaPlus } from 'react-icons/fa';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
 
 const FriendMap = () => {
   const { user, token } = useAuth();

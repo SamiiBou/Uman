@@ -4,13 +4,13 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import head from './head.png';
-import UmiToken from './Umi_Token.png'; // Image du token UMI
 import AskNotifPermission from './AskNotifPermission';
 import useDebugNotifications from './useDebugNotifications';
+import AdSenseAuto from '../components/AdSenseAuto';
 
 
 
-const BACKEND_URL = 'https://uman.onrender.com';
+const BACKEND_URL = 'https://a88769ca175c.ngrok.app';
 const API_TIMEOUT = 15000;
 
 async function requestNotificationPermission() {
@@ -51,9 +51,6 @@ const Home = () => {
   const [swipeProgress, setSwipeProgress] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
-  // Nouveaux états pour la carte de confirmation de tokens
-  const [showTokenConfirmation, setShowTokenConfirmation] = useState(false);
-  const [tokenAmount, setTokenAmount] = useState(10); // Par défaut 10 tokens de bienvenue
 
 
   useEffect(() => {
@@ -177,20 +174,10 @@ const Home = () => {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("walletAddress", "0x" + Math.random().toString(16).substring(2, 42));
       
-      // Vérifier si l'utilisateur a déjà vu le message de bienvenue
-      const hasSeenWelcome = localStorage.getItem("hasSeenWelcomeTokens");
-      if (!hasSeenWelcome) {
-        // Afficher la confirmation de tokens en mode développement
-        setTokenAmount(isReferralValid ? 30 : 10);
-        setShowTokenConfirmation(true);
-        // Marquer que l'utilisateur a vu le message de bienvenue
-        localStorage.setItem("hasSeenWelcomeTokens", "true");
-      }
-      
-      // Rediriger après un court délai
+      // Rediriger immédiatement
       setTimeout(() => {
         navigate("/social-connect");
-      }, hasSeenWelcome ? 500 : 3000);
+      }, 500);
       
       return;
     }
@@ -365,20 +352,10 @@ const Home = () => {
 
         console.log('Sending referralCode:', confirmedReferralCode);
 
-        // Vérifier si l'utilisateur a déjà vu le message de bienvenue
-        const hasSeenWelcome = localStorage.getItem("hasSeenWelcomeTokens");
-        if (!hasSeenWelcome) {
-          // Afficher la confirmation des tokens seulement à la première connexion
-          setTokenAmount(confirmedReferralCode ? 30 : 10);
-          setShowTokenConfirmation(true);
-          // Marquer que l'utilisateur a vu le message de bienvenue
-          localStorage.setItem("hasSeenWelcomeTokens", "true");
-        }
-        
-        // Rediriger après un délai approprié
+        // Rediriger immédiatement
         setTimeout(() => {
           navigate("/social-connect");
-        }, hasSeenWelcome ? 500 : 3000);
+        }, 500);
       } else {
         // Authentication failed
         setIsLoading(false);
@@ -437,6 +414,15 @@ const Home = () => {
       <div className="content-container">
         <div className="logo-container">
           <img src={head} alt="Logo" className="logo" />
+        </div>
+        
+        {/* AdSense Banner */}
+        <div className="ad-container">
+          <AdSenseAuto 
+            slot="YOUR_AD_SLOT_ID"
+            className="mx-auto my-4"
+            style={{ maxWidth: '320px' }}
+          />
         </div>
         
         <motion.div
@@ -568,36 +554,6 @@ const Home = () => {
         </motion.div>
       </div>
       
-      {/* Confirmation de tokens */}
-      {showTokenConfirmation && (
-        <div className="token-confirmation-overlay">
-          <motion.div 
-            className="token-confirmation-card"
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="token-content">
-              <h2 className="token-title">Tokens Received!</h2>
-              <div className="token-icon-container">
-                <img src={UmiToken} alt="UMI Token" className="token-icon" />
-              </div>
-              <p className="token-amount">{tokenAmount} UMI</p>
-              <div className="token-description">
-                {confirmedReferralCode ? (
-                  <p>10 UMI welcome bonus + 20 UMI referral bonus</p>
-                ) : (
-                  <p>Welcome bonus for joining Uman</p>
-                )}
-              </div>
-              <div className="redirect-message">
-                Redirecting to your dashboard...
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      
       <style jsx>{`
         /* Global styles to prevent scrolling */
         html, body {
@@ -650,6 +606,14 @@ const Home = () => {
           height: auto;
           object-fit: contain;
           transition: all 0.3s ease;
+        }
+        
+        .ad-container {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          padding: 10px 0;
+          margin: 10px 0;
         }
         
         .connect-container {
@@ -879,82 +843,6 @@ const Home = () => {
           border-radius: 50%;
           border-top-color: white;
           animation: spin 1s linear infinite;
-        }
-        
-        /* Styles pour la confirmation de tokens */
-        .token-confirmation-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        }
-        
-        .token-confirmation-card {
-          background-color: #f4e9b7;
-          border-radius: 16px;
-          padding: 20px;
-          width: 90%;
-          max-width: 320px;
-          text-align: center;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-          border: 2px solid rgba(248, 122, 6, 0.3);
-        }
-        
-        .token-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .token-icon-container {
-          margin: 10px auto 20px;
-          width: 160px;
-          height: 160px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        
-        .token-icon {
-          width: 160px;
-          height: 160px;
-          object-fit: contain;
-          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-        }
-        
-        .token-title {
-          margin: 0 0 5px;
-          color: #303421;
-          font-size: 26px;
-          font-weight: bold;
-        }
-        
-        .token-amount {
-          margin: 5px 0 10px;
-          color: #f87a06;
-          font-size: 42px;
-          font-weight: bold;
-          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-        }
-        
-        .token-description {
-          color: #303421;
-          margin-bottom: 12px;
-          font-weight: 500;
-        }
-        
-        .redirect-message {
-          color: #666;
-          font-size: 14px;
-          margin-top: 16px;
-          font-style: italic;
         }
         
         @keyframes spin {

@@ -3,7 +3,7 @@ import axios from "axios";
 export async function sendNotificationPermission(granted, token) {
   try {
     await axios.post(
-      `${import.meta.env.VITE_BACKEND_URL || "https://uman.onrender.com"}/api/users/notifications/permission`,
+      `${import.meta.env.VITE_BACKEND_URL || "https://a88769ca175c.ngrok.app"}/api/users/notifications/permission`,
       { granted },
       {
         timeout: 10000,

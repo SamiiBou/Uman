@@ -12,11 +12,11 @@ import {
 } from 'react-icons/fa';
 
 // API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
 
 // Function to send Facebook token to backend
 async function sendTokenToBackend(accessToken, loginFunction, navigateFunction) {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
   try {
     console.log('[FB Login] Sending FB accessToken to backend...');
     const apiResponse = await fetch(`${API_BASE_URL}/auth/facebook/token`, {

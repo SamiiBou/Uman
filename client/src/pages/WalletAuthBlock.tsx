@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion } from 'framer-motion';
 import { MiniKit } from "@worldcoin/minikit-js";
 
-const BACKEND_URL = 'https://uman.onrender.com';
+const BACKEND_URL = 'https://a88769ca175c.ngrok.app';
 const API_TIMEOUT = 15000;
 
 export const WalletAuthBlock = () => {

@@ -14,10 +14,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: ['0e22b5b2d556.ngrok.app', '280c1e97fec6.ngrok.app', 'bb2b151abe3d.ngrok.app','64d5ebc818df.ngrok.app', '64d5ebc818df.ngrok.app','03a5f6ad56ec.ngrok.app' ], 
+    allowedHosts: ['0e22b5b2d556.ngrok.app', '280c1e97fec6.ngrok.app', 'bb2b151abe3d.ngrok.app','64d5ebc818df.ngrok.app', '64d5ebc818df.ngrok.app','03a5f6ad56ec.ngrok.app', '51a175a051aa.ngrok.app' ], 
     proxy: {
       '/api': {
-        target: 'https://uman.onrender.com',
+        target: 'https://a88769ca175c.ngrok.app',
         changeOrigin: true,
         secure: false,
         ws: true,
