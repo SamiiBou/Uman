@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /**
  * Composant AdSense pour afficher des publicités Google AdSense
@@ -15,16 +15,39 @@ const AdSense = ({
   className = '',
   style = {}
 }) => {
+  const adRef = useRef(null);
+  const [adLoaded, setAdLoaded] = useState(false);
+
   useEffect(() => {
-    try {
-      // Initialiser AdSense après le montage du composant
-      if (window.adsbygoogle && process.env.NODE_ENV === 'production') {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
+    const loadAd = () => {
+      try {
+        // Vérifier que le container existe et a des dimensions
+        if (adRef.current && process.env.NODE_ENV === 'production') {
+          const rect = adRef.current.getBoundingClientRect();
+          
+          // S'assurer que l'élément est visible et a des dimensions
+          if (rect.width > 0 && rect.height > 0) {
+            // Attendre que le DOM soit complètement prêt
+            if (window.adsbygoogle && !adLoaded) {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+              setAdLoaded(true);
+            }
+          } else {
+            // Si l'élément n'a pas de dimensions, réessayer après un court délai
+            console.warn('AdSense: Container has no dimensions, retrying...');
+            setTimeout(loadAd, 100);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur AdSense:', error);
       }
-    } catch (error) {
-      console.error('Erreur AdSense:', error);
-    }
-  }, []);
+    };
+
+    // Attendre un court instant pour s'assurer que le DOM est rendu
+    const timer = setTimeout(loadAd, 100);
+    
+    return () => clearTimeout(timer);
+  }, [adLoaded]);
 
   // Ne pas afficher les publicités en mode développement
   if (process.env.NODE_ENV !== 'production') {
@@ -37,10 +60,22 @@ const AdSense = ({
   }
 
   return (
-    <div className={className} style={style}>
+    <div 
+      className={className} 
+      style={{ 
+        minWidth: '250px',
+        minHeight: '50px',
+        ...style 
+      }}
+    >
       <ins
+        ref={adRef}
         className="adsbygoogle"
-        style={{ display: 'block', ...style }}
+        style={{ 
+          display: 'block',
+          minWidth: '250px',
+          minHeight: '50px'
+        }}
         data-ad-client="ca-pub-9377305341589290"
         data-ad-slot={slot}
         data-ad-format={format}
