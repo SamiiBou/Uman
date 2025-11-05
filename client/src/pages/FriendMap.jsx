@@ -4,8 +4,7 @@ import axios from 'axios';
 import { gsap } from 'gsap';
 import * as d3 from 'd3';
 import { FaProjectDiagram, FaSearch, FaMinus, FaPlus } from 'react-icons/fa';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
+import { API_BASE_URL } from '../config';
 
 const FriendMap = () => {
   const { user, token } = useAuth();

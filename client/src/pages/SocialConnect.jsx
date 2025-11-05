@@ -8,6 +8,7 @@ import head from './head.png';
 import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
 import AdSenseAuto from '../components/AdSenseAuto';
+import { API_BASE_URL } from '../config';
 
 // Custom X logo component
 const FaX = () => (
@@ -22,8 +23,6 @@ const FaX = () => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://03a5f6ad56ec.ngrok.app/api';
 
 const SocialConnect = () => {
   const navigate = useNavigate();

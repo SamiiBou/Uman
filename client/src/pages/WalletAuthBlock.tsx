@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { MiniKit } from "@worldcoin/minikit-js";
+import { BACKEND_URL } from '../config';
 
-const BACKEND_URL = 'https://a88769ca175c.ngrok.app';
 const API_TIMEOUT = 15000;
 
 export const WalletAuthBlock = () => {

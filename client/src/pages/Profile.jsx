@@ -14,8 +14,7 @@ import {
   FaPencilAlt,
   FaUserShield
 } from 'react-icons/fa';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api';
+import { API_BASE_URL } from '../config';
 
 const Profile = () => {
   const { user, isLoading } = useAuth();

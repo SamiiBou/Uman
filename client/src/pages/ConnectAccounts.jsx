@@ -7,9 +7,8 @@ import { MiniKit, VerificationLevel } from "@worldcoin/minikit-js";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { ethers } from 'ethers';
+import { API_BASE_URL } from '../config';
 
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://520ffd996e5c.ngrok.app/api';
 // ERC-20 token contract address and minimal ABI
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 const ERC20_ABI = [

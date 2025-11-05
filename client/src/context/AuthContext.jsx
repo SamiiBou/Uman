@@ -1,9 +1,10 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import axios from 'axios'; // Assurez-vous qu'axios est configuré pour l'URL de base
+import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
-// Configuration Axios de base (peut être mis dans un fichier séparé src/api/axiosConfig.js)
+// Configuration Axios de base
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://a88769ca175c.ngrok.app/api', // URL de votre API backend
+  baseURL: API_BASE_URL,
 });
 
 // Intercepteur pour ajouter le token JWT aux requêtes sortantes

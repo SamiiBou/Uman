@@ -7,10 +7,8 @@ import head from './head.png';
 import AskNotifPermission from './AskNotifPermission';
 import useDebugNotifications from './useDebugNotifications';
 import AdSenseAuto from '../components/AdSenseAuto';
+import { BACKEND_URL } from '../config';
 
-
-
-const BACKEND_URL = 'https://a88769ca175c.ngrok.app';
 const API_TIMEOUT = 15000;
 
 async function requestNotificationPermission() {
