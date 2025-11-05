@@ -32,7 +32,12 @@
     "vis-network": "^9.1.9"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.30.1"
+    "@rollup/rollup-linux-x64-gnu": "4.30.1",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.0.17",
+    "@tailwindcss/oxide-linux-arm64-gnu": "4.0.17",
+    "@tailwindcss/oxide-darwin-x64": "4.0.17",
+    "@tailwindcss/oxide-darwin-arm64": "4.0.17",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.0.17"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.17",
