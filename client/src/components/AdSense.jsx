@@ -22,7 +22,7 @@ const AdSense = ({
     const loadAd = () => {
       try {
         // Vérifier que le container existe et a des dimensions
-        if (adRef.current && process.env.NODE_ENV === 'production') {
+        if (adRef.current && import.meta.env.MODE === 'production') {
           const rect = adRef.current.getBoundingClientRect();
           
           // S'assurer que l'élément est visible et a des dimensions
@@ -50,7 +50,7 @@ const AdSense = ({
   }, [adLoaded]);
 
   // Ne pas afficher les publicités en mode développement
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.MODE !== 'production') {
     return (
       <div className={`border-2 border-dashed border-gray-300 p-4 text-center ${className}`} style={style}>
         <p className="text-gray-500 text-sm">AdSense Placeholder (Dev Mode)</p>
