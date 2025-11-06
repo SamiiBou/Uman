@@ -417,7 +417,7 @@ const Home = () => {
         {/* AdSense Banner */}
         <div className="ad-container">
           <AdSenseAuto 
-            slot="YOUR_AD_SLOT_ID"
+            slot="2494391307"
             className="mx-auto my-4"
             style={{ maxWidth: '320px' }}
           />

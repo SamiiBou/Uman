@@ -676,7 +676,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
               {/* AdSense Banner - directement sous le bouton */}
               <div className="ad-container-social">
                 <AdSenseAuto 
-                  slot="YOUR_AD_SLOT_ID"
+                  slot="2494391307"
                   style={{ maxWidth: '320px', width: '100%' }}
                 />
               </div>

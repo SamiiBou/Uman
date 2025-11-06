@@ -137,36 +137,16 @@ const AdSense = ({
         minWidth: '250px',
         minHeight: '100px',
         display: 'block',
-        backgroundColor: '#ffe4e1', // Couleur de fond temporaire pour visualiser l'emplacement
-        border: '2px solid #ff6b6b', // Bordure rouge pour voir l'emplacement
-        padding: '10px',
         ...style 
       }}
     >
-      <div style={{ 
-        fontSize: '12px', 
-        color: '#333', 
-        marginBottom: '5px',
-        fontWeight: 'bold'
-      }}>
-        🎯 AdSense Container (Production Mode)
-      </div>
-      <div style={{ 
-        fontSize: '10px', 
-        color: '#666', 
-        marginBottom: '10px'
-      }}>
-        Slot: {slot || 'NO SLOT PROVIDED'} | Format: {format}
-      </div>
       <ins
         ref={adRef}
         className="adsbygoogle"
         style={{ 
           display: 'block',
           minWidth: '250px',
-          minHeight: '100px',
-          backgroundColor: '#fff9e6', // Fond jaune pâle pour l'élément ins
-          border: '1px dashed #ffa500' // Bordure orange
+          minHeight: '100px'
         }}
         data-ad-client="ca-pub-9377305341589290"
         data-ad-slot={slot}
