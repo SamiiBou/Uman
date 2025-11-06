@@ -20,39 +20,77 @@ const AdSense = ({
 
   const isProduction = import.meta.env.MODE === 'production';
 
+  console.log('🔍 [AdSense] Component rendered:', {
+    isProduction,
+    slot,
+    format,
+    mode: import.meta.env.MODE,
+    adLoaded,
+    hasWindow: typeof window !== 'undefined',
+    hasAdsbygoogle: typeof window !== 'undefined' && !!window.adsbygoogle
+  });
+
   useEffect(() => {
+    console.log('🔍 [AdSense] useEffect triggered:', { isProduction, adLoaded });
+    
     // Ne charger les pubs que en production
-    if (!isProduction) return;
+    if (!isProduction) {
+      console.log('⚠️ [AdSense] Not in production mode, skipping ad load');
+      return;
+    }
     
     const loadAd = () => {
       try {
+        console.log('🔍 [AdSense] loadAd called');
+        
         // Vérifier que le container existe et a des dimensions
         if (adRef.current) {
           const rect = adRef.current.getBoundingClientRect();
+          console.log('🔍 [AdSense] Container dimensions:', {
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left
+          });
           
           // S'assurer que l'élément est visible et a des dimensions
           if (rect.width > 0 && rect.height > 0) {
+            console.log('🔍 [AdSense] Container has valid dimensions');
+            console.log('🔍 [AdSense] window.adsbygoogle:', window.adsbygoogle);
+            console.log('🔍 [AdSense] adLoaded:', adLoaded);
+            
             // Attendre que le DOM soit complètement prêt
             if (window.adsbygoogle && !adLoaded) {
+              console.log('✅ [AdSense] Pushing ad to adsbygoogle queue');
               (window.adsbygoogle = window.adsbygoogle || []).push({});
               setAdLoaded(true);
-              console.log('AdSense: Ad loaded successfully');
+              console.log('✅ [AdSense] Ad loaded successfully');
+            } else if (!window.adsbygoogle) {
+              console.error('❌ [AdSense] window.adsbygoogle is not available!');
+            } else if (adLoaded) {
+              console.log('ℹ️ [AdSense] Ad already loaded, skipping');
             }
           } else {
             // Si l'élément n'a pas de dimensions, réessayer après un court délai
-            console.warn('AdSense: Container has no dimensions, retrying...');
+            console.warn('⚠️ [AdSense] Container has no dimensions, retrying in 100ms...');
             setTimeout(loadAd, 100);
           }
+        } else {
+          console.error('❌ [AdSense] adRef.current is null!');
         }
       } catch (error) {
-        console.error('Erreur AdSense:', error);
+        console.error('❌ [AdSense] Error loading ad:', error);
       }
     };
 
     // Attendre un court instant pour s'assurer que le DOM est rendu
+    console.log('🔍 [AdSense] Setting timeout to load ad in 100ms');
     const timer = setTimeout(loadAd, 100);
     
-    return () => clearTimeout(timer);
+    return () => {
+      console.log('🔍 [AdSense] Cleaning up timer');
+      clearTimeout(timer);
+    };
   }, [adLoaded, isProduction]);
 
   // En mode développement, afficher un placeholder visible
@@ -90,6 +128,8 @@ const AdSense = ({
   }
 
   // En production, afficher la vraie publicité AdSense
+  console.log('📢 [AdSense] Rendering production ad with slot:', slot);
+  
   return (
     <div 
       className={className} 
@@ -97,16 +137,36 @@ const AdSense = ({
         minWidth: '250px',
         minHeight: '100px',
         display: 'block',
+        backgroundColor: '#ffe4e1', // Couleur de fond temporaire pour visualiser l'emplacement
+        border: '2px solid #ff6b6b', // Bordure rouge pour voir l'emplacement
+        padding: '10px',
         ...style 
       }}
     >
+      <div style={{ 
+        fontSize: '12px', 
+        color: '#333', 
+        marginBottom: '5px',
+        fontWeight: 'bold'
+      }}>
+        🎯 AdSense Container (Production Mode)
+      </div>
+      <div style={{ 
+        fontSize: '10px', 
+        color: '#666', 
+        marginBottom: '10px'
+      }}>
+        Slot: {slot || 'NO SLOT PROVIDED'} | Format: {format}
+      </div>
       <ins
         ref={adRef}
         className="adsbygoogle"
         style={{ 
           display: 'block',
           minWidth: '250px',
-          minHeight: '100px'
+          minHeight: '100px',
+          backgroundColor: '#fff9e6', // Fond jaune pâle pour l'élément ins
+          border: '1px dashed #ffa500' // Bordure orange
         }}
         data-ad-client="ca-pub-9377305341589290"
         data-ad-slot={slot}
