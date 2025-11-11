@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import path from "path"
 
 export default defineConfig({
-  // Serve the client/fonts directory as public static assets
-  publicDir: 'fonts',
+  // Serve the client/public directory as public static assets
+  publicDir: 'public',
   plugins: [react()],
   resolve: {
     alias: {
