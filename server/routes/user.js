@@ -1,18 +1,18 @@
 import express from 'express';
 import { authenticate } from '../controllers/auth.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
-import { 
-  getSocialAccounts, 
-  disconnectSocialAccount, 
-  getTwitterProfile, 
-  getUserProfile, 
-  searchUsers, 
+import {
+  getSocialAccounts,
+  disconnectSocialAccount,
+  getTwitterProfile,
+  getUserProfile,
+  searchUsers,
   searchAppUsers,
   dailyLogin,
-  sendFriendRequest, 
-  acceptFriendRequest, 
-  rejectFriendRequest, 
-  getConnections, 
+  sendFriendRequest,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  getConnections,
   getUserConnectionsById,
   getUserProfileById,
   getVerifiedUsers,
@@ -51,24 +51,145 @@ router.post("/notifications/permission", updateNotificationPermission);
 
 
 router.get('/check-telegram/:username', searchTelegramUser);
-router.get('/check-twitter/:username', searchTwitterUser);  
+router.get('/check-twitter/:username', searchTwitterUser);
 router.get('/check-discord/:username', searchDiscordUser);
+
+// PRISM Daily Reward - Claim 100 UMI tokens once per day
+router.post('/claim-prism-reward', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Calculate today's midnight UTC
+    const now = new Date();
+    const todayMidnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+    // Check if user already claimed today
+    const lastClaim = user.prismReward?.lastClaimDate;
+    if (lastClaim && new Date(lastClaim) >= todayMidnightUTC) {
+      // Calculate time until next claim
+      const nextClaimTime = new Date(todayMidnightUTC);
+      nextClaimTime.setUTCDate(nextClaimTime.getUTCDate() + 1);
+      const timeUntilNextClaim = nextClaimTime - now;
+
+      const hoursLeft = Math.floor(timeUntilNextClaim / (1000 * 60 * 60));
+      const minutesLeft = Math.floor((timeUntilNextClaim % (1000 * 60 * 60)) / (1000 * 60));
+
+      return res.status(400).json({
+        success: false,
+        message: `Already claimed today. Next claim in ${hoursLeft}h ${minutesLeft}m`,
+        alreadyClaimed: true,
+        nextClaimTime: nextClaimTime.toISOString(),
+        hoursLeft,
+        minutesLeft
+      });
+    }
+
+    // Award 100 UMI tokens
+    const PRISM_REWARD_AMOUNT = 100;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $inc: { tokenBalance: PRISM_REWARD_AMOUNT },
+        $set: { 'prismReward.lastClaimDate': now }
+      },
+      { new: true }
+    );
+
+    console.log(`[PRISM Reward] User ${userId} claimed ${PRISM_REWARD_AMOUNT} UMI tokens. New balance: ${updatedUser.tokenBalance}`);
+
+    return res.json({
+      success: true,
+      message: `+${PRISM_REWARD_AMOUNT} UMI tokens claimed!`,
+      reward: PRISM_REWARD_AMOUNT,
+      newBalance: updatedUser.tokenBalance,
+      claimedAt: now.toISOString()
+    });
+
+  } catch (error) {
+    console.error('[PRISM Reward] Error claiming reward:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error claiming reward',
+      error: error.message
+    });
+  }
+});
+
+// Get PRISM reward status (check if can claim)
+router.get('/prism-reward-status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const user = await User.findById(userId).select('prismReward tokenBalance');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const now = new Date();
+    const todayMidnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+
+    const lastClaim = user.prismReward?.lastClaimDate;
+    const canClaim = !lastClaim || new Date(lastClaim) < todayMidnightUTC;
+
+    let hoursLeft = 0;
+    let minutesLeft = 0;
+    let nextClaimTime = null;
+
+    if (!canClaim) {
+      nextClaimTime = new Date(todayMidnightUTC);
+      nextClaimTime.setUTCDate(nextClaimTime.getUTCDate() + 1);
+      const timeUntilNextClaim = nextClaimTime - now;
+      hoursLeft = Math.floor(timeUntilNextClaim / (1000 * 60 * 60));
+      minutesLeft = Math.floor((timeUntilNextClaim % (1000 * 60 * 60)) / (1000 * 60));
+    }
+
+    return res.json({
+      success: true,
+      canClaim,
+      lastClaimDate: lastClaim,
+      nextClaimTime: nextClaimTime?.toISOString() || null,
+      hoursLeft,
+      minutesLeft,
+      tokenBalance: user.tokenBalance
+    });
+
+  } catch (error) {
+    console.error('[PRISM Reward] Error checking status:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
 
 
 // Token balance endpoint - peut être utilisé avec ou sans authentification
 router.get('/token-balance/:walletAddress', async (req, res) => {
   try {
     const { walletAddress } = req.params;
-    
+
     if (!walletAddress) {
-      return res.status(400).json({ 
-        status: "error", 
-        message: "L'adresse du portefeuille est requise" 
+      return res.status(400).json({
+        status: "error",
+        message: "L'adresse du portefeuille est requise"
       });
     }
-    
+
     console.log(`Récupération du solde de token pour l'adresse: ${walletAddress}`);
-    
+
     // Utiliser un fournisseur public ou celui configuré dans vos variables d'environnement
     // Correction pour ethers v6
     console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
@@ -76,25 +197,25 @@ router.get('/token-balance/:walletAddress', async (req, res) => {
     const provider = new JsonRpcProvider(
       process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/v2/vCq59BHgMYA2JIRKAbRPmIL8OaTeRAgu'
     );
-    
+
     // Créer le contrat - Correction pour ethers v6
     const tokenContract = new Contract(
       TOKEN_CONTRACT_ADDRESS,
       ERC20_ABI,
       provider
     );
-    
+
     // Récupérer simultanément le solde et les décimales
     const [rawBalance, decimals] = await Promise.all([
       tokenContract.balanceOf(walletAddress),
       tokenContract.decimals()
     ]);
-    
+
     // Formater le solde avec le bon nombre de décimales - Correction pour ethers v6
     const formattedBalance = formatUnits(rawBalance, decimals);
-    
+
     console.log(`Solde récupéré pour ${walletAddress}: ${formattedBalance}`);
-    
+
     // Retourner les informations
     res.json({
       status: "success",
@@ -151,20 +272,20 @@ router.post("/verify-social", async (req, res) => {
     // Verify the World ID proof via cloud API
     let verifyRes
     let worldIDDetails = {}
-    
+
     try {
       console.log("Verifying World ID proof with cloud API for social login...")
       console.log("Complete proof structure:", JSON.stringify(proof, null, 2))
-      
+
       verifyRes = await verifyCloudProof(
         proof,
         process.env.APP_ID,
         "verifyhuman",
         "" // signal (empty if not used)
       )
-      
+
       console.log("Complete World ID verification result:", JSON.stringify(verifyRes, null, 2))
-      
+
       if (!verifyRes.success) {
         console.error(`World ID verification failed for ${provider} login:`, verifyRes.error)
         return res.status(400).json({
@@ -172,9 +293,9 @@ router.post("/verify-social", async (req, res) => {
           error: verifyRes.error
         })
       }
-      
+
       console.log(`World ID verification successful for ${provider} login!`)
-      
+
       // Extraire les informations importantes de la vérification
       worldIDDetails = {
         verified: true,
@@ -187,7 +308,7 @@ router.post("/verify-social", async (req, res) => {
         // Stockez le niveau de vérification
         verificationLevel: proof.verification_level || proof.proof?.verification_level || "orb"
       }
-      
+
     } catch (err) {
       console.error(`Error during World ID verification for ${provider}:`, err)
       return res.status(500).json({
@@ -256,44 +377,44 @@ router.post("/verify", async (req, res) => {
   try {
     const { walletAddress, proof } = req.body;
     console.log("Verification request received for wallet:", walletAddress);
-    
+
     if (!walletAddress) {
       return res.status(400).json({ message: "Wallet address is required" });
     }
-    
+
     // Vérification de la preuve World ID
     if (!proof || proof.status !== 'success') {
       console.error("Invalid proof format:", proof);
       return res.status(400).json({ message: "Invalid proof format" });
     }
-    
+
     let worldIDDetails = {};
-    
+
     try {
       // Log de la structure complète de la preuve pour débogage
       console.log("Complete proof structure:", JSON.stringify(proof, null, 2));
-      
+
       // Vérifier la preuve auprès des serveurs World ID
       console.log("Verifying World ID proof with cloud API...");
       const verifyRes = await verifyCloudProof(
-        proof, 
+        proof,
         process.env.APP_ID, // Assurez-vous que cette variable d'environnement est définie
         "signin", // Doit correspondre à l'action dans le frontend
         "" // Signal (vide si vous n'en utilisez pas)
       );
-      
+
       // Log du résultat complet pour débogage
       console.log("Complete World ID verification result:", JSON.stringify(verifyRes, null, 2));
-      
+
       // Si la vérification échoue, retourner une erreur
       if (!verifyRes.success) {
         console.error("World ID verification failed:", verifyRes.error);
-        return res.status(400).json({ 
-          message: "Identity verification failed", 
-          error: verifyRes.error 
+        return res.status(400).json({
+          message: "Identity verification failed",
+          error: verifyRes.error
         });
       }
-      
+
       // Extraire les informations de vérification importantes
       worldIDDetails = {
         verified: true,
@@ -303,17 +424,17 @@ router.post("/verify", async (req, res) => {
         txHash: verifyRes.transaction?.hash || verifyRes.txHash || null,
         verificationLevel: proof.verification_level || proof.proof?.verification_level || "orb"
       };
-      
+
       console.log("World ID verification successful with details:", worldIDDetails);
-      
+
     } catch (verifyError) {
       console.error("Error during World ID verification:", verifyError);
-      return res.status(500).json({ 
-        message: "Error verifying World ID proof", 
-        error: verifyError.message 
+      return res.status(500).json({
+        message: "Error verifying World ID proof",
+        error: verifyError.message
       });
     }
-    
+
     // Rechercher ou créer l'utilisateur
     let user = await User.findOne({ walletAddress });
     if (!user) {
@@ -333,19 +454,19 @@ router.post("/verify", async (req, res) => {
       // Mettre à jour le statut de vérification
       user.verified = true;
       user.verificationLevel = "orb";
-      
+
       // Stocker les détails de la vérification World ID
       if (!user.socialVerifications) user.socialVerifications = {};
       user.socialVerifications.worldid = worldIDDetails;
     }
-    
+
     await user.save();
     console.log("User updated - verified:", user.verified);
     console.log("World ID verification details saved:", user.socialVerifications.worldid);
-    
+
     // Renvoyer la réponse de succès
-    res.json({ 
-      message: "User verified successfully", 
+    res.json({
+      message: "User verified successfully",
       verified: true,
       worldIDDetails: worldIDDetails // Optionnel: renvoyer les détails pour informer le client
     });
@@ -359,18 +480,18 @@ router.get('/social-accounts', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     const socialAccounts = {
       twitter: !!user.social?.twitter?.id,
       google: !!user.social?.google?.id,
       facebook: !!user.social?.facebook?.id,
       instagram: !!user.social?.instagram?.id
     };
-    
+
     res.json({ socialAccounts });
   } catch (error) {
     console.error('Error fetching social accounts:', error);
@@ -383,28 +504,28 @@ router.delete('/social-accounts/:provider', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
     const { provider } = req.params;
-    
+
     // Validate provider
     if (!['twitter', 'google', 'facebook', 'instagram'].includes(provider)) {
       return res.status(400).json({ message: 'Invalid social provider' });
     }
-    
+
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Check if provider is connected
     if (!user.social || !user.social[provider] || !user.social[provider].id) {
       return res.status(400).json({ message: `No ${provider} account connected` });
     }
-    
+
     // Remove the provider
     user.social[provider] = undefined;
     await user.save();
-    
-    res.json({ 
+
+    res.json({
       message: `${provider} account disconnected successfully`,
       socialAccounts: {
         twitter: !!user.social?.twitter?.id,
@@ -466,7 +587,7 @@ router.get('/groups/:chatId/stats', async (req, res) => {
   if (!group) {
     return res.status(404).json({ success: false, message: 'Group not found' });
   }
-  const total    = group.members.length;
+  const total = group.members.length;
   const verified = group.members.filter(u => u.verified).length;
   res.json({ success: true, totalMembers: total, verifiedMembers: verified });
 });

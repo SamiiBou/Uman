@@ -12,11 +12,11 @@ import { API_BASE_URL } from '../config';
 
 // Custom X logo component
 const FaX = () => (
-  <svg 
-    width="1em" 
-    height="1em" 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
+  <svg
+    width="1em"
+    height="1em"
+    viewBox="0 0 24 24"
+    fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
     style={{ marginTop: '14%' }}
   >
@@ -41,6 +41,14 @@ const SocialConnect = () => {
     telegram: false,
     discord: false
   });
+
+  // PRISM Daily Reward state
+  const [prismRewardStatus, setPrismRewardStatus] = useState({
+    canClaim: true,
+    hoursLeft: 0,
+    minutesLeft: 0,
+    loading: false
+  });
   const [showIdCard, setShowIdCard] = useState(false);
   const [idCardVisible, setIdCardVisible] = useState(false); // Modified: Default to false to hide card initially
   const [socialHandles, setSocialHandles] = useState({
@@ -48,7 +56,7 @@ const SocialConnect = () => {
     telegram: '',
     discord: ''
   });
-  
+
   // MODIFICATION 1: Initialize state from localStorage
   const [idCardImageUrl, setIdCardImageUrl] = useState(() => {
     // if already uploaded, display the S3 URL, otherwise keep empty while waiting for canvas
@@ -61,7 +69,7 @@ const SocialConnect = () => {
   const [isUploadingCard, setIsUploadingCard] = useState(false);
   const [s3CardUrl, setS3CardUrl] = useState(() => localStorage.getItem('s3CardUrl') || '');
   const [idCardS3Key, setIdCardS3Key] = useState(() => localStorage.getItem('idCardS3Key'));
-  
+
   // New states for lottery animation
   // const [showLotteryAnimation, setShowLotteryAnimation] = useState(false);
 
@@ -81,7 +89,7 @@ const SocialConnect = () => {
   //     });
   //   }
   // }, [idCardS3Key, token]);
-  
+
 
   // Périodiquement on check les tx en attente
   useEffect(() => {
@@ -124,35 +132,35 @@ const SocialConnect = () => {
       axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${storedToken}` }
       })
-      .then(({ data }) => {
-        if (data._id) {
-          localStorage.setItem('userId', data._id);
-          setUserId(data._id);
-          if (data.name) setUsername(data.name);
-          if (data.walletAddress) setWalletAddress(data.walletAddress);
-          if (data.social) {
-            const connected = {
-              x: !!data.social.twitter, // Mapping twitter field from API to x in front-end
-              telegram: !!data.social.telegram,
-              discord: !!data.social.discord
-            };
-            setConnectedAccounts(connected);
-            if (data.socialVerifications) {
-              setOnChainProofs(data.socialVerifications);
+        .then(({ data }) => {
+          if (data._id) {
+            localStorage.setItem('userId', data._id);
+            setUserId(data._id);
+            if (data.name) setUsername(data.name);
+            if (data.walletAddress) setWalletAddress(data.walletAddress);
+            if (data.social) {
+              const connected = {
+                x: !!data.social.twitter, // Mapping twitter field from API to x in front-end
+                telegram: !!data.social.telegram,
+                discord: !!data.social.discord
+              };
+              setConnectedAccounts(connected);
+              if (data.socialVerifications) {
+                setOnChainProofs(data.socialVerifications);
+              }
+              setSocialHandles({
+                x: data.social.twitter ? '@' + data.social.twitter.username : '',
+                telegram: data.social.telegram ? data.social.telegram.username : '',
+                discord: data.social.discord && data.social.discord.username
+                  ? data.social.discord.username + (data.social.discord.discriminator ? '#' + data.social.discord.discriminator : '')
+                  : ''
+              });
             }
-            setSocialHandles({
-              x: data.social.twitter ? '@' + data.social.twitter.username : '',
-              telegram: data.social.telegram ?   data.social.telegram.username : '',
-              discord: data.social.discord && data.social.discord.username
-                ?  data.social.discord.username + (data.social.discord.discriminator ? '#' + data.social.discord.discriminator : '')
-                : ''
-            });
           }
-        }
-      })
-      .catch(err => {
-        console.error("Error retrieving user information:", err);
-      });
+        })
+        .catch(err => {
+          console.error("Error retrieving user information:", err);
+        });
     }
   }, []);
 
@@ -167,6 +175,28 @@ const SocialConnect = () => {
   //     return () => clearTimeout(timer);
   //   }
   // }, [connectedAccounts]);
+
+  // Fetch PRISM reward status on mount
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(({ data }) => {
+          if (data.success) {
+            setPrismRewardStatus({
+              canClaim: data.canClaim,
+              hoursLeft: data.hoursLeft || 0,
+              minutesLeft: data.minutesLeft || 0,
+              loading: false
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching PRISM reward status:", err);
+        });
+    }
+  }, [token]);
 
   // Désactivé : la carte ID ne s'affiche plus
   // useEffect(() => {
@@ -206,10 +236,10 @@ const SocialConnect = () => {
       setNotification({ show: true, message: "Aucune clé S3 disponible pour le téléchargement", type: "error" });
       return;
     }
-  
+
     try {
       setNotification({ show: true, message: "Préparation du téléchargement…", type: "info" });
-  
+
       // 1) Récupérer le blob
       const response = await axios.get(
         `${API_BASE_URL}/s3/download/${encodeURIComponent(idCardS3Key)}`,
@@ -219,98 +249,98 @@ const SocialConnect = () => {
         }
       );
       const blob = response.data;
-  
+
       // 2) Générer l'URL temporaire
       const blobUrl = window.URL.createObjectURL(blob);
-  
+
       // 3) Déterminer l'extension depuis le MIME
       const mime = blob.type;                     // ex. "image/png"
-      const ext  = mime.split('/')[1] || 'png';   // ex. "png"
+      const ext = mime.split('/')[1] || 'png';   // ex. "png"
       const filename = `${username || 'user'}_card.${ext}`;
-  
+
       // 4) Créer l'élément <a> et l'attacher
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = filename;
       link.style.display = 'none';               // invisible
       document.body.appendChild(link);
-  
+
       // 5) Simuler le clic
       link.click();
-  
+
       // 6) Nettoyer
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
-  
+
       setNotification({ show: true, message: "Téléchargement démarré !", type: "success" });
     } catch (err) {
       console.error("Error testing download:", err);
       setNotification({ show: true, message: `Échec du téléchargement : ${err.message}`, type: "error" });
     }
   };
-  
-  
-// Modification de la fonction uploadIdCardToS3 pour stocker la clé S3
-const uploadIdCardToS3 = async (imageBlob) => {
-  try {
-    setIsUploadingCard(true);
-    setNotification({
-      show: true,
-      message: "Uploading ID card to secure storage...",
-      type: 'info'
-    });
-    
-    // Créer un objet FormData pour envoyer l'image
-    const formData = new FormData();
-    formData.append('image', imageBlob, `${username || 'user'}_id_card.png`);
-    
-    // Configurer les headers avec le token si disponible
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    // Envoyer l'image à l'endpoint upload
-    const response = await axios.post(
-      `${API_BASE_URL}/s3/upload`, 
-      formData,
-      { 
-        headers: headers
-      }
-    );
-    
-    // Si l'upload réussit, sauvegarder l'URL S3 et la clé
-    if (response.data && response.data.url) {
-      // setS3CardUrl(response.data.url);
-      setIdCardImageUrl(response.data.url);
-      setIdCardS3Key(response.data.key);             
-      
-      // IMPORTANT: Stocker la clé S3 et l'URL dans localStorage
-      localStorage.setItem('idCardS3Key', response.data.key);
-      // localStorage.setItem('s3CardUrl', response.data.url);
-      // console.log("S3 key saved:", response.data.key);
-      
+
+
+  // Modification de la fonction uploadIdCardToS3 pour stocker la clé S3
+  const uploadIdCardToS3 = async (imageBlob) => {
+    try {
+      setIsUploadingCard(true);
       setNotification({
         show: true,
-        message: "ID Card successfully uploaded to secure storage!",
-        type: 'success'
+        message: "Uploading ID card to secure storage...",
+        type: 'info'
       });
-      
+
+      // Créer un objet FormData pour envoyer l'image
+      const formData = new FormData();
+      formData.append('image', imageBlob, `${username || 'user'}_id_card.png`);
+
+      // Configurer les headers avec le token si disponible
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // Envoyer l'image à l'endpoint upload
+      const response = await axios.post(
+        `${API_BASE_URL}/s3/upload`,
+        formData,
+        {
+          headers: headers
+        }
+      );
+
+      // Si l'upload réussit, sauvegarder l'URL S3 et la clé
+      if (response.data && response.data.url) {
+        // setS3CardUrl(response.data.url);
+        setIdCardImageUrl(response.data.url);
+        setIdCardS3Key(response.data.key);
+
+        // IMPORTANT: Stocker la clé S3 et l'URL dans localStorage
+        localStorage.setItem('idCardS3Key', response.data.key);
+        // localStorage.setItem('s3CardUrl', response.data.url);
+        // console.log("S3 key saved:", response.data.key);
+
+        setNotification({
+          show: true,
+          message: "ID Card successfully uploaded to secure storage!",
+          type: 'success'
+        });
+
+        setIsUploadingCard(false);
+        return response.data;
+      }
+    } catch (error) {
+      console.error("Error uploading ID card to S3:", error);
+      setNotification({
+        show: true,
+        message: "Error saving ID card. Using local version instead.",
+        type: 'error'
+      });
       setIsUploadingCard(false);
-      return response.data;
     }
-  } catch (error) {
-    console.error("Error uploading ID card to S3:", error);
-    setNotification({
-      show: true,
-      message: "Error saving ID card. Using local version instead.",
-      type: 'error'
-    });
-    setIsUploadingCard(false);
-  }
-  
-  return null;
-};
+
+    return null;
+  };
 
   // ID card rendering (idem que vous aviez)
   const generateIdCardImage = () => {
@@ -338,21 +368,21 @@ const uploadIdCardToS3 = async (imageBlob) => {
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-  
+
     ctx.fillStyle = "black";
     ctx.font = "bold 96px 'Winky Rough', sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(username || 'User', 176, 390);
-  
+
     ctx.fillStyle = "black";
     ctx.font = "48px 'Winky Rough', sans-serif";
     ctx.fillText(socialHandles.telegram || '@user_telegram', 105, 585);
     ctx.fillText(socialHandles.discord || 'user#1234', 107, 690);
     ctx.fillText(socialHandles.x || '@user_x', 105, 795); // Updated from twitter to x
-  
+
     // Afficher localement l'image (comme avant)
     setIdCardImageUrl(canvas.toDataURL('image/png'));
-    
+
     // MODIFICATION: Convertir le canvas en blob et l'envoyer à S3 seulement si pas déjà uploadé
     canvas.toBlob(async (blob) => {
       try {
@@ -377,43 +407,43 @@ const uploadIdCardToS3 = async (imageBlob) => {
   axios.interceptors.request.use(req => {
     console.debug('[AXIOS REQ]', {
       method: req.method,
-      url:    req.url,
+      url: req.url,
       headers: req.headers,
-      data:   req.data
+      data: req.data
     });
     return req;
   });
   axios.interceptors.response.use(res => {
     console.debug('[AXIOS RES]', {
-      url:      res.config.url,
-      status:   res.status,
-      data:     res.data
+      url: res.config.url,
+      status: res.status,
+      data: res.data
     });
     return res;
   }, err => {
     console.error('[AXIOS ERR]', {
-      url:    err.config?.url,
-      msg:    err.message,
+      url: err.config?.url,
+      msg: err.message,
       status: err.response?.status,
-      data:   err.response?.data
+      data: err.response?.data
     });
     return Promise.reject(err);
   });
 
   // Envoi de la preuve à World ID puis on‑chain
   const handleWorldIDVerification = async (provider) => {
-  
+
     if (!userId || !walletAddress) {
       setError("User not identified or wallet not connected. Please log in again.");
       return;
     }
-    
+
     if (isVerifying) return;
-    
+
     setPendingSocialLogin(provider);
     setIsVerifying(true);
     setError(null);
-    
+
     try {
       // Vérifier que World ID App est installée
       if (!MiniKit.isInstalled()) {
@@ -422,25 +452,25 @@ const uploadIdCardToS3 = async (imageBlob) => {
         setIsVerifying(false);
         return;
       }
-      
+
       // Lancer la vérification Orb
       const { finalPayload: proofPayload } = await MiniKit.commandsAsync.verify({
         action: "verifyhuman",
         signal: "",
         verification_level: VerificationLevel.Orb,
       });
-  
-    
+
+
       if (proofPayload.status !== "success") {
         console.warn('[DBG] Proof.status ≠ success', proofPayload);
         setError(proofPayload.message || "Identity verification failed");
         setIsVerifying(false);
         return;
       }
-      
+
       // Pour la compatibilité avec le backend, qui attend encore "twitter" comme nom de provider
       const backendProvider = provider === 'x' ? 'twitter' : provider;
-      
+
       // Envoyer la vérification au backend seulement
       await axios.post(
         `${API_BASE_URL}/users/verify-social`,
@@ -452,43 +482,43 @@ const uploadIdCardToS3 = async (imageBlob) => {
         },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
-  
-  
+
+
       // Mettre à jour l'état local
       setConnectedAccounts(prev => ({
         ...prev,
         [provider]: true
       }));
-      
+
       // Notification de succès
       setNotification({
         show: true,
         message: `Proceeding to ${provider} for account linking…`,
         type: 'info'
       });
-    
+
       // Redirection vers l'authentification sociale - Utiliser "twitter" dans l'URL pour le backend
       const backendPath = provider === 'x' ? 'twitter' : provider;
       const state = btoa(JSON.stringify({ linkMode: true, userId, timestamp: Date.now() }));
       let redirectUrl = `${API_BASE_URL}/auth/${backendPath.toLowerCase()}?state=${state}`;
       if (token) redirectUrl += `&token=${token}`;
       setTimeout(() => window.location.href = redirectUrl, 1500);
-    
+
     } catch (err) {
       console.error("Unexpected error in handleWorldIDVerification:", err);
       setError(err.message || "An unexpected error occurred");
       setIsVerifying(false);
-    }finally {
+    } finally {
       setIsVerifying(false);
     }
   };
-  
+
   // Vérification du statut d'une tx par l'API
   const checkTransactionStatus = async (transactionId, provider) => {
     try {
       // Convertir "x" en "twitter" pour l'API
       const apiProvider = provider === 'x' ? 'twitter' : provider;
-      
+
       const response = await axios.get(
         `${API_BASE_URL}/users/check-transaction?transactionId=${transactionId}&provider=${apiProvider}`,
         { headers: token ? { 'Authorization': `Bearer ${token}` } : {} }
@@ -520,7 +550,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
     setSocialHandles(prev => ({
       x: prev.x || '@user_x', // Modifié de twitter à x
       telegram: prev.telegram || '@user_telegram',
-      discord: prev.discord   || 'user#1234'
+      discord: prev.discord || 'user#1234'
     }));
     generateIdCardImage();
     setShowIdCard(true);
@@ -531,20 +561,20 @@ const uploadIdCardToS3 = async (imageBlob) => {
 
   // Icônes + actions
   const socialAccounts = [
-    { name: 'X',         icon: <FaX />,             action: () => handleWorldIDVerification('x'),      color: '#f28011', connected: connectedAccounts.x },
-    { name: 'Telegram',  icon: <FaTelegramPlane />, action: () => handleWorldIDVerification('telegram'),  color: '#f28011', connected: connectedAccounts.telegram },
-    { name: 'Discord',   icon: <FaDiscord />,       action: () => handleWorldIDVerification('discord'),   color: '#f28011', connected: connectedAccounts.discord },
+    { name: 'X', icon: <FaX />, action: () => handleWorldIDVerification('x'), color: '#f28011', connected: connectedAccounts.x },
+    { name: 'Telegram', icon: <FaTelegramPlane />, action: () => handleWorldIDVerification('telegram'), color: '#f28011', connected: connectedAccounts.telegram },
+    { name: 'Discord', icon: <FaDiscord />, action: () => handleWorldIDVerification('discord'), color: '#f28011', connected: connectedAccounts.discord },
   ];
 
-  const linkedCount     = Object.values(connectedAccounts).filter(Boolean).length;
-  const totalUmiEarned  = linkedCount * 100;
-  const allLinked       = linkedCount === 3;
-  const progressLabel   = `${linkedCount}/3 linked account`;
+  const linkedCount = Object.values(connectedAccounts).filter(Boolean).length;
+  const totalUmiEarned = linkedCount * 100;
+  const allLinked = linkedCount === 3;
+  const progressLabel = `${linkedCount}/3 linked account`;
   const progressPercent = (linkedCount / 3) * 100;
-  
+
   // Calculate lottery tickets based on connected accounts
   // const lotteryTickets = linkedCount;
-  
+
   return (
     <div className="social-connect">
       <div className="background-gradient"></div>
@@ -557,19 +587,19 @@ const uploadIdCardToS3 = async (imageBlob) => {
             <div className="empty-space"></div>
             <div className="empty-space"></div>
           </div> */}
-          
+
           <div className="hero-section">
             <div className="logo-and-card-container">
               <div className="logo-container">
                 <div className="logo-glow"></div>
                 <img src={head} alt="Logo" className="logo" />
               </div>
-              
+
               <div className="header-text">
                 <div className="custom-title">Link & Grow</div>
-                
+
                 <p className="subtitle">
-                Connect your social accounts, prove you're human, and unlock your <strong>Uman ID Card</strong>. <br></br>Stand out from bots! 
+                  Connect your social accounts, prove you're human, and unlock your <strong>Uman ID Card</strong>. <br></br>Stand out from bots!
                 </p>
                 <br></br>
               </div>
@@ -580,15 +610,15 @@ const uploadIdCardToS3 = async (imageBlob) => {
                   <span className="progress-reward">{allLinked ? 'All accounts connected!' : 'Connect all accounts to maximize rewards'}</span>
                 </div>
                 <div className="progress-bar-bg">
-                  <div 
-                    className="progress-bar-fill" 
+                  <div
+                    className="progress-bar-fill"
                     style={{ width: `${progressPercent}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               {/* Version améliorée et minimaliste de l'annonce de loterie */}
-              
+
               {/* Total UMI earned indicator */}
               {totalUmiEarned > 0 && (
                 <div className="umi-earned-badge" key={`earned-${totalUmiEarned}`}>
@@ -603,7 +633,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
           <div className="content-body">
             <div className="accounts-grid">
               {socialAccounts.map((account) => (
-                <div 
+                <div
                   key={`${account.name}-${account.connected ? 'connected' : 'disconnected'}`}
                   className={`account-card ${account.connected ? 'connected' : ''}`}
                   onClick={account.connected ? null : null}
@@ -625,12 +655,12 @@ const uploadIdCardToS3 = async (imageBlob) => {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* FIX: Modified this section to always show verified status if connected */}
                     {account.connected ? (
                       <div className="verification-status-container">
                         {onChainProofs[account.name.toLowerCase()] &&
-                         onChainProofs[account.name.toLowerCase()].proofHash ? (
+                          onChainProofs[account.name.toLowerCase()].proofHash ? (
                           // If on-chain proof exists, show detailed proof info
                           <div className="onchain-proof">
                             <FaCheckCircle className="text-green-500 mr-1" />
@@ -665,17 +695,89 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 </div>
               ))}
             </div>
-            
+
+            {/* PRISM Daily Reward Card */}
+            <div className="prism-reward-card">
+              <div className="prism-reward-content">
+                <div className="prism-reward-icon">
+                  <Coins size={24} />
+                </div>
+                <div className="prism-reward-text">
+                  <h4>Daily Bonus: +100 UMI</h4>
+                  <p>Open PRISM app and do a first trade to receive 100 UMI tokens</p>
+                </div>
+                <button
+                  className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
+                  onClick={async () => {
+                    if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
+
+                    // Open PRISM app
+                    window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+
+                    // Claim reward
+                    setPrismRewardStatus(prev => ({ ...prev, loading: true }));
+                    try {
+                      const response = await axios.post(
+                        `${API_BASE_URL}/users/claim-prism-reward`,
+                        {},
+                        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                      );
+
+                      if (response.data.success) {
+                        setNotification({
+                          show: true,
+                          message: `🎉 ${response.data.message}`,
+                          type: 'success'
+                        });
+                        setPrismRewardStatus({
+                          canClaim: false,
+                          hoursLeft: 23,
+                          minutesLeft: 59,
+                          loading: false
+                        });
+                      }
+                    } catch (err) {
+                      const errData = err.response?.data;
+                      if (errData?.alreadyClaimed) {
+                        setPrismRewardStatus({
+                          canClaim: false,
+                          hoursLeft: errData.hoursLeft || 0,
+                          minutesLeft: errData.minutesLeft || 0,
+                          loading: false
+                        });
+                      } else {
+                        setNotification({
+                          show: true,
+                          message: errData?.message || 'Error claiming reward',
+                          type: 'error'
+                        });
+                        setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+                      }
+                    }
+                  }}
+                  disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
+                >
+                  {prismRewardStatus.loading ? (
+                    <span>Claiming...</span>
+                  ) : prismRewardStatus.canClaim ? (
+                    <span>Open PRISM & Claim</span>
+                  ) : (
+                    <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {/* "Why connect?" button moved below the account cards */}
             <div className="action-buttons why-connect-only">
               <button className="info-button" onClick={toggleInfoModal}>
                 <Info size={16} />
                 <span>Why connect?</span>
               </button>
-              
+
               {/* AdSense Banner - directement sous le bouton */}
               <div className="ad-container-social">
-                <AdSenseAuto 
+                <AdSenseAuto
                   slot="2494391307"
                   style={{ maxWidth: '320px', width: '100%' }}
                 />
@@ -683,7 +785,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
             </div>
           </div>
         </div>
-        
+
         {/* World ID Verification Status */}
         {isVerifying && (
           <div className="verification-status">
@@ -691,14 +793,14 @@ const uploadIdCardToS3 = async (imageBlob) => {
             <span>World ID verification in progress...</span>
           </div>
         )}
-        
+
         {error && (
           <div className="error-message">
             <AlertCircle className="error-icon" size={20} />
             <span>{error}</span>
           </div>
         )}
-        
+
         {/* Info Modal */}
         {showInfoModal && (
           <div className="modal-overlay" onClick={toggleInfoModal}>
@@ -710,7 +812,7 @@ const uploadIdCardToS3 = async (imageBlob) => {
                 <div>
                   <h4>Your Uman ID Card</h4>
                   <p>
-                  Unlock your exclusive Uman ID Card — undeniable proof that you're a genuine human on social networks (not a bot).
+                    Unlock your exclusive Uman ID Card — undeniable proof that you're a genuine human on social networks (not a bot).
                   </p>
                 </div>
               </div>
@@ -751,16 +853,16 @@ const uploadIdCardToS3 = async (imageBlob) => {
             </div>
           </div>
         )}
-        
+
         {/* Canvas élément caché pour générer l'image (pas visible à l'utilisateur) */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
       </div>
-      
+
       {/* Badge flottant simplifié */}
-      
+
       {/* Animation marketing pour la loterie - style réduit et plus minimaliste */}
-      
-      
+
+
       {notification.show && (
         <div className={`notification ${notification.type}`}>
           <span>{notification.message}</span>
@@ -1201,6 +1303,79 @@ const uploadIdCardToS3 = async (imageBlob) => {
           background-color: rgba(242, 128, 17, 0.1);
           padding: 0.4rem 0.9rem; /* Réduit de 0.5rem 1rem à 0.4rem 0.9rem */
           border-radius: 7px; /* Réduit de 8px à 7px */
+        }
+        
+        /* PRISM Daily Reward Card */
+        .prism-reward-card {
+          width: 100%;
+          background: linear-gradient(135deg, rgba(242, 128, 17, 0.15) 0%, rgba(242, 128, 17, 0.05) 100%);
+          border: 1px solid rgba(242, 128, 17, 0.3);
+          border-radius: 12px;
+          padding: 1rem;
+          margin-top: 1rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .prism-reward-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .prism-reward-icon {
+          width: 48px;
+          height: 48px;
+          background: linear-gradient(135deg, #f28011, #f16403);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+        }
+        
+        .prism-reward-text {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .prism-reward-text h4 {
+          margin: 0;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #303421;
+        }
+        
+        .prism-reward-text p {
+          margin: 0.25rem 0 0;
+          font-size: 0.75rem;
+          color: rgba(48, 52, 33, 0.7);
+          line-height: 1.3;
+        }
+        
+        .prism-claim-btn {
+          padding: 0.5rem 1rem;
+          background: linear-gradient(135deg, #f28011, #f16403);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        
+        .prism-claim-btn:hover:not(.disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(242, 128, 17, 0.3);
+        }
+        
+        .prism-claim-btn.disabled {
+          background: rgba(48, 52, 33, 0.2);
+          color: rgba(48, 52, 33, 0.6);
+          cursor: not-allowed;
         }
         
         /* Main content area */

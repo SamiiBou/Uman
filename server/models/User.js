@@ -178,6 +178,11 @@ const UserSchema = new mongoose.Schema(
     /* ------- Tokens ---------------------------------------------- */
     tokenBalance: { type: Number, default: 0, min: 0 },
 
+    /* ------- PRISM Daily Reward ---------------------------------- */
+    prismReward: {
+      lastClaimDate: { type: Date, default: null }
+    },
+
     /* ====== 🆕 Airdrop pending & historique ====================== */
     claimPending : { type: ClaimPendingSchema, default: null },
     claimsHistory: { type: [ClaimHistorySchema], default: [] },

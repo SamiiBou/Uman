@@ -1,12 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { FaCheck, FaInfoCircle, FaShieldAlt, FaLink, FaUnlink } from 'react-icons/fa';
+import { Coins } from 'lucide-react';
+import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
 const Dashboard = () => {
   const { user, isLoading } = useAuth();
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationType, setNotificationType] = useState('info');
+
+  // PRISM Daily Reward state
+  const [prismRewardStatus, setPrismRewardStatus] = useState({
+    canClaim: true,
+    hoursLeft: 0,
+    minutesLeft: 0,
+    loading: false
+  });
+
+  // Get token from localStorage
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+  // Fetch PRISM reward status on mount
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(({ data }) => {
+          if (data.success) {
+            setPrismRewardStatus({
+              canClaim: data.canClaim,
+              hoursLeft: data.hoursLeft || 0,
+              minutesLeft: data.minutesLeft || 0,
+              loading: false
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Error fetching PRISM reward status:", err);
+        });
+    }
+  }, [token]);
 
   if (isLoading) {
     return (
@@ -33,7 +69,7 @@ const Dashboard = () => {
     if (user.social?.twitter?.photos?.[0]?.value) return user.social.twitter.photos[0].value;
     return 'https://api.dicebear.com/7.x/identicon/svg?seed=' + user.id; // Generate identicon as fallback
   };
-  
+
   const avatarUrl = getAvatar();
 
   // Count verified social accounts
@@ -65,48 +101,48 @@ const Dashboard = () => {
             <span>{accountVerificationPercentage}%</span>
           </div>
           <div className="progress-bar">
-            <div 
-              className="progress-fill" 
+            <div
+              className="progress-fill"
               style={{ width: `${accountVerificationPercentage}%` }}
             ></div>
           </div>
         </div>
-        
+
         <div className="accounts-mobile-list">
           {/* Google Account */}
-          <SocialAccountCard 
+          <SocialAccountCard
             name="Google"
             icon="google"
             isConnected={!!user.social?.google}
             apiUrl={`${API_BASE_URL}/auth/google`}
           />
-          
+
           {/* Facebook Account */}
-          <SocialAccountCard 
+          <SocialAccountCard
             name="Facebook"
             icon="facebook"
             isConnected={!!user.social?.facebook}
             apiUrl={`${API_BASE_URL}/auth/facebook`}
           />
-          
+
           {/* Twitter Account */}
-          <SocialAccountCard 
+          <SocialAccountCard
             name="Twitter"
             icon="twitter"
             isConnected={!!user.social?.twitter}
             apiUrl={`${API_BASE_URL}/auth/twitter`}
           />
-          
+
           {/* Instagram Account */}
-          <SocialAccountCard 
+          <SocialAccountCard
             name="Instagram"
             icon="instagram"
             isConnected={!!user.social?.instagram}
             apiUrl={`${API_BASE_URL}/auth/instagram`}
           />
-          
+
           {/* LinkedIn Account */}
-          <SocialAccountCard 
+          <SocialAccountCard
             name="LinkedIn"
             icon="linkedin"
             isConnected={!!user.social?.linkedin}
@@ -124,6 +160,76 @@ const Dashboard = () => {
         <p className="privacy-text">
           Your data is secure and never shared without your consent.
         </p>
+      </div>
+
+      {/* PRISM Daily Reward Card */}
+      <div className="prism-reward-card">
+        <div className="prism-reward-content">
+          <div className="prism-reward-icon">
+            <Coins size={24} />
+          </div>
+          <div className="prism-reward-text">
+            <h4>Daily Bonus: +100 UMI</h4>
+            <p>Open PRISM app and do a first trade to receive 100 UMI tokens</p>
+          </div>
+          <button
+            className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
+            onClick={async () => {
+              if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
+
+              // Open PRISM app
+              window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+
+              // Claim reward
+              setPrismRewardStatus(prev => ({ ...prev, loading: true }));
+              try {
+                const response = await axios.post(
+                  `${API_BASE_URL}/users/claim-prism-reward`,
+                  {},
+                  { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                );
+
+                if (response.data.success) {
+                  setNotificationMessage(`🎉 ${response.data.message}`);
+                  setNotificationType('success');
+                  setShowNotification(true);
+                  setTimeout(() => setShowNotification(false), 3000);
+                  setPrismRewardStatus({
+                    canClaim: false,
+                    hoursLeft: 23,
+                    minutesLeft: 59,
+                    loading: false
+                  });
+                }
+              } catch (err) {
+                const errData = err.response?.data;
+                if (errData?.alreadyClaimed) {
+                  setPrismRewardStatus({
+                    canClaim: false,
+                    hoursLeft: errData.hoursLeft || 0,
+                    minutesLeft: errData.minutesLeft || 0,
+                    loading: false
+                  });
+                } else {
+                  setNotificationMessage(errData?.message || 'Error claiming reward');
+                  setNotificationType('error');
+                  setShowNotification(true);
+                  setTimeout(() => setShowNotification(false), 3000);
+                  setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+                }
+              }
+            }}
+            disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
+          >
+            {prismRewardStatus.loading ? (
+              <span>Claiming...</span>
+            ) : prismRewardStatus.canClaim ? (
+              <span>Open PRISM & Claim</span>
+            ) : (
+              <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Notification */}
@@ -226,6 +332,78 @@ const Dashboard = () => {
           font-size: 0.9rem;
         }
         
+        /* PRISM Daily Reward Card */
+        .prism-reward-card {
+          width: 100%;
+          background: linear-gradient(135deg, rgba(242, 128, 17, 0.15) 0%, rgba(242, 128, 17, 0.05) 100%);
+          border: 1px solid rgba(242, 128, 17, 0.3);
+          border-radius: 12px;
+          padding: 1rem;
+          margin-top: 1rem;
+        }
+        
+        .prism-reward-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .prism-reward-icon {
+          width: 48px;
+          height: 48px;
+          background: linear-gradient(135deg, #f28011, #f16403);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+        }
+        
+        .prism-reward-text {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .prism-reward-text h4 {
+          margin: 0;
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: var(--text-color, #303421);
+        }
+        
+        .prism-reward-text p {
+          margin: 0.25rem 0 0;
+          font-size: 0.75rem;
+          color: var(--text-color-muted, rgba(48, 52, 33, 0.7));
+          line-height: 1.3;
+        }
+        
+        .prism-claim-btn {
+          padding: 0.5rem 1rem;
+          background: linear-gradient(135deg, #f28011, #f16403);
+          color: white;
+          border: none;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        
+        .prism-claim-btn:hover:not(.disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(242, 128, 17, 0.3);
+        }
+        
+        .prism-claim-btn.disabled {
+          background: rgba(48, 52, 33, 0.2);
+          color: rgba(48, 52, 33, 0.6);
+          cursor: not-allowed;
+        }
+        
         @media (max-width: 480px) {
           .accounts-mobile-list {
             gap: 0.5rem;
@@ -240,7 +418,7 @@ const SocialAccountCard = ({ name, icon, isConnected, apiUrl }) => {
   const initiateAuth = () => {
     window.location.href = apiUrl;
   };
-  
+
   return (
     <div className={`social-account-card ${isConnected ? 'connected' : ''}`}>
       <div className={`social-icon social-${icon.toLowerCase()}`}>
@@ -259,7 +437,7 @@ const SocialAccountCard = ({ name, icon, isConnected, apiUrl }) => {
           Connect
         </button>
       )}
-      
+
       <style jsx>{`
         .social-account-card {
           display: flex;
