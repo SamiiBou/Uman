@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Award, Info, Gift, Shield, User, Check, RefreshCw, Copy, Clock } from "lucide-react";
+import { ChevronLeft, Award, Info, Gift, Shield, User, Check, RefreshCw, Copy, Clock, Coins } from "lucide-react";
 import axios from "axios";
 import { ethers, BrowserProvider, Contract, formatUnits } from 'ethers';
 import { FaTwitter, FaTelegramPlane, FaDiscord } from 'react-icons/fa';
@@ -8,11 +8,11 @@ import distributorAbi from '../abi/Distributor.json';
 import { encodeVoucher } from '../utils/encodeVoucher';
 
 const FaX = () => (
-  <svg 
-    width="1.05em" 
-    height="1.05em" 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
+  <svg
+    width="1.05em"
+    height="1.05em"
+    viewBox="0 0 24 24"
+    fill="currentColor"
     xmlns="http://www.w3.org/2000/svg"
     style={{ marginTop: '0%' }}
   >
@@ -33,9 +33,9 @@ const ERC20_ABI = [
 
 const RewardsHub = () => {
   // Replace mock states with real data states
-  const [umiBalance,    setUmiBalance]    = useState(0); // claimable
+  const [umiBalance, setUmiBalance] = useState(0); // claimable
   const [walletBalance, setWalletBalance] = useState(null); // on-chain
-  const [currentStreak, setCurrentStreak] = useState(null);  const [maxStreak, setMaxStreak] = useState(null);
+  const [currentStreak, setCurrentStreak] = useState(null); const [maxStreak, setMaxStreak] = useState(null);
   const [todaysReward, setTodaysReward] = useState(null);
   // Live counter for tokens earned since login
   const [lastLoginTime, setLastLoginTime] = useState(null);
@@ -54,6 +54,14 @@ const RewardsHub = () => {
   const [userId, setUserId] = useState(null);
   const [isHumanVerified, setIsHumanVerified] = useState(false); // New state for human verification badge
   const [justCopied, setJustCopied] = useState(false); // State to track copy success
+
+  // PRISM Daily Reward state
+  const [prismRewardStatus, setPrismRewardStatus] = useState({
+    canClaim: true,
+    hoursLeft: 0,
+    minutesLeft: 0,
+    loading: false
+  });
   const [challenges, setChallenges] = useState([
     {
       id: 1,
@@ -101,16 +109,16 @@ const RewardsHub = () => {
       completed: false
     }
   ]);
-  
+
   const [socialVerifications, setSocialVerifications] = useState({});
-  
+
   const scrollContainerRef = useRef(null);
 
   /// Fonction pour réclamer des tokens - mise à jour
   const claimTokens = async () => {
     setIsLoading(true);
     setNotification({ show: true, message: "Preparing claim…", type: "info" });
-  
+
     /* ─────────────────────────────
      * 0. Pré-vérifications
      * ────────────────────────────*/
@@ -125,7 +133,7 @@ const RewardsHub = () => {
       setIsLoading(false);
       return;
     }
-  
+
     /* ─────────────────────────────
      * 1. Récupération du voucher
      * ────────────────────────────*/
@@ -143,10 +151,10 @@ const RewardsHub = () => {
           validateStatus: () => true, // on gère nous-mêmes les codes ≠200
         }
       );
-  
+
     let res = await postVoucher();
     let { data } = res;
-  
+
     // Cas particulier : “claim already pending…”
     if (data.error?.startsWith("Claim already pending")) {
       const pendingNonce = data.pending?.nonce;
@@ -167,7 +175,7 @@ const RewardsHub = () => {
       res = await postVoucher();
       data = res.data;
     }
-  
+
     /* ─────────────────────────────
      * 2. Validation stricte de la réponse
      * ────────────────────────────*/
@@ -177,9 +185,9 @@ const RewardsHub = () => {
       setIsLoading(false);
       return;
     }
-  
+
     const { voucher, signature, claimedAmount } = data;
-  
+
     /* ─────────────────────────────
      * 3. Construction des arguments
      * ────────────────────────────*/
@@ -192,7 +200,7 @@ const RewardsHub = () => {
       setIsLoading(false);
       return;
     }
-  
+
     /* ─────────────────────────────
      * 4. Envoi de la transaction
      * ────────────────────────────*/
@@ -207,7 +215,7 @@ const RewardsHub = () => {
           },
         ],
       });
-  
+
       if (finalPayload.status === "error") {
         await axios.post(
           `${API_BASE_URL}/airdrop/cancel`,
@@ -216,22 +224,22 @@ const RewardsHub = () => {
         );
         throw new Error(finalPayload.message ?? "User rejected");
       }
-  
+
       /* ─────────────────────────
        * 5. Confirmation serveur
        * ────────────────────────*/
       const txId = finalPayload.transaction_id;
       let attempts = 0;
-      for (;;) {
+      for (; ;) {
         attempts += 1;
         const resp = await axios.post(
           `${API_BASE_URL}/airdrop/confirm`,
           { nonce: voucher.nonce, transaction_id: txId },
           { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true }
         );
-  
+
         if (resp.status === 200 && resp.data.ok) break;
-  
+
         if (resp.status === 202 && resp.data.status === "pending") {
           console.log(`[confirm] pending – retry in 5 s (try #${attempts})`);
           await new Promise((r) => setTimeout(r, 5000));
@@ -239,7 +247,7 @@ const RewardsHub = () => {
         }
         throw new Error(resp.data.error || `Confirm failed (status ${resp.status})`);
       }
-  
+
       /* ─────────────────────────
        * 6. Mise à jour UI
        * ────────────────────────*/
@@ -260,14 +268,14 @@ const RewardsHub = () => {
       setTimeout(() => setNotification({ show: false, message: "", type: "info" }), 5000);
     }
   };
-  
-  
+
+
 
   // Fonction pour ouvrir le groupe Telegram
   const openTelegramGroup = () => {
     window.open('https://t.me/+W3pxAJb4yNk5MWM0', '_blank');
   };
-  
+
   // Fonction pour ouvrir le profil X
   const openXProfile = () => {
     window.open('https://x.com/umantheapp', '_blank');
@@ -277,14 +285,14 @@ const RewardsHub = () => {
     if (firstLoginOfDay && todaysReward !== null) {
       // Calculate how many seconds in a day the reward will be distributed over
       const secondsPerDay = 24 * 3600;
-      
+
       // Calculate tokens earned per second
       const rate = todaysReward / secondsPerDay;
-      
+
       // Calculate initial value based on elapsed time since first login of the day
       const now = new Date();
       const elapsedSec = Math.floor((now - firstLoginOfDay) / 1000);
-      
+
       console.log("[REWARDS HUB] Initialisation du compteur live:", {
         premierLoginDuJour: firstLoginOfDay,
         heureActuelle: now,
@@ -292,19 +300,19 @@ const RewardsHub = () => {
         tauxParSeconde: rate,
         montantInitial: (elapsedSec * rate).toFixed(4)
       });
-      
+
       // Initial amount earned so far
       let initial = elapsedSec * rate;
-      
+
       // Cap at maximum reward
       if (initial > todaysReward) {
         initial = todaysReward;
         // console.log("[REWARDS HUB] Compteur plafonné au montant maximal:", todaysReward);
       }
-      
+
       // Set initial counter value
       setLiveCounter(initial);
-      
+
       // Create interval to update the counter
       const interval = setInterval(() => {
         setLiveCounter(prev => {
@@ -312,55 +320,55 @@ const RewardsHub = () => {
           const currentTime = new Date();
           const currentElapsedSec = Math.floor((currentTime - firstLoginOfDay) / 1000);
           const earned = currentElapsedSec * rate;
-          
+
           // Cap at maximum reward
           if (earned >= todaysReward) {
             clearInterval(interval);
             return todaysReward;
           }
-          
+
           return earned;
         });
       }, 1000);
-      
+
       return () => clearInterval(interval);
     }
   }, [firstLoginOfDay, todaysReward]);
-  
-  
+
+
   // Load user data on component mount (similar to ConnectAccounts)
   useEffect(() => {
     // console.log("Loading user data...");
     setIsLoading(true);
-    
+
     // Retrieve JWT token from localStorage
-    const storedToken = localStorage.getItem('auth_token'); 
+    const storedToken = localStorage.getItem('auth_token');
     if (storedToken) {
       setToken(storedToken);
       // console.log("JWT token retrieved from localStorage");
     }
-    
+
     // Retrieve user ID from localStorage
     const storedUserId = localStorage.getItem('userId') || localStorage.getItem('user_id');
     if (storedUserId) {
       setUserId(storedUserId);
       // console.log(`User ID retrieved from localStorage: ${storedUserId}`);
     }
-    
+
     // Retrieve username from localStorage
     const storedUsername = localStorage.getItem('username') || localStorage.getItem('user_username');
     if (storedUsername) {
       setUsername(storedUsername);
       // console.log(`Username retrieved: ${storedUsername}`);
     }
-    
+
     // Retrieve wallet address from localStorage
     const storedWalletAddress = localStorage.getItem('walletAddress');
     if (storedWalletAddress) {
       setWalletAddress(storedWalletAddress);
       // console.log(`Wallet address retrieved: ${storedWalletAddress}`);
     }
-    
+
     // If we have a token, fetch user info from the API
     if (storedToken) {
       // Debug logs for auth/me request
@@ -368,86 +376,106 @@ const RewardsHub = () => {
       // console.log("API_BASE_URL:", API_BASE_URL);
       // console.log("GET URL:", `${API_BASE_URL}/auth/me`);
       // console.log("Request headers:", { Authorization: `Bearer ${storedToken}` });
-      
+
       axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${storedToken}` }
       })
-      .then(response => {
-        const data = response.data;
-        if (data && data._id) {
-          // Store ID and referralCode in state and localStorage if needed
-          localStorage.setItem('userId', data._id);
-          setUserId(data._id);
-          // console.log(`User ID retrieved from API: ${data._id}`);
-          
-          if (data.name) {
-            setUsername(data.name);
+        .then(response => {
+          const data = response.data;
+          if (data && data._id) {
+            // Store ID and referralCode in state and localStorage if needed
+            localStorage.setItem('userId', data._id);
+            setUserId(data._id);
+            // console.log(`User ID retrieved from API: ${data._id}`);
+
+            if (data.name) {
+              setUsername(data.name);
+            }
+            if (data.walletAddress) {
+              setWalletAddress(data.walletAddress);
+            }
+            if (data.referralCode) {
+              setReferralCode(data.referralCode);
+            }
+
+            // Utiliser le tokenBalance de la BDD
+            if (data.tokenBalance !== undefined && data.tokenBalance !== null) {
+              setUmiBalance(parseFloat(data.tokenBalance));
+            } else {
+              setUmiBalance(0);          // rien à claim
+            }
+            // Set human verification status
+            if (data.verified === true) {
+              setIsHumanVerified(true);
+              // console.log("User is human verified");
+            }
+
+            // Set social verification state and profile image
+            if (data.socialVerifications) {
+              setSocialVerifications(data.socialVerifications);
+              console.log("Réseaux sociaux vérifiés:", data.socialVerifications);
+              // Log plus détaillé pour chaque réseau social
+              console.log("Twitter vérifié:", data.socialVerifications.twitter?.verified || false);
+              console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
+              console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
+            }
+            if (data.social?.twitter?.profileImageUrl) {
+              setProfileImage(data.social.twitter.profileImageUrl);
+            } else if (data.social?.telegram?.profileImageUrl) {
+              setProfileImage(data.social.telegram.profileImageUrl);
+            } else if (data.social?.discord?.profileImageUrl) {
+              setProfileImage(data.social.discord.profileImageUrl);
+            }
           }
-          if (data.walletAddress) {
-            setWalletAddress(data.walletAddress);
+
+          // Fetch daily login streak data
+          fetchDailyLoginData(storedToken);
+        })
+        .catch(err => {
+          console.error("Error retrieving user information:", err);
+          if (err.response) {
+            console.error("Error response data:", err.response.data);
+            console.error("Error response status:", err.response.status);
+            console.error("Error response headers:", err.response.headers);
           }
-          if (data.referralCode) {
-            setReferralCode(data.referralCode);
-          }
-          
-          // Utiliser le tokenBalance de la BDD
-if (data.tokenBalance !== undefined && data.tokenBalance !== null) {
-    setUmiBalance(parseFloat(data.tokenBalance));
-  } else {
-    setUmiBalance(0);          // rien à claim
-  }          
-          // Set human verification status
-          if (data.verified === true) {
-            setIsHumanVerified(true);
-            // console.log("User is human verified");
-          }
-          
-          // Set social verification state and profile image
-          if (data.socialVerifications) {
-            setSocialVerifications(data.socialVerifications);
-            console.log("Réseaux sociaux vérifiés:", data.socialVerifications);
-            // Log plus détaillé pour chaque réseau social
-            console.log("Twitter vérifié:", data.socialVerifications.twitter?.verified || false);
-            console.log("Telegram vérifié:", data.socialVerifications.telegram?.verified || false);
-            console.log("Discord vérifié:", data.socialVerifications.discord?.verified || false);
-          }
-          if (data.social?.twitter?.profileImageUrl) {
-            setProfileImage(data.social.twitter.profileImageUrl);
-          } else if (data.social?.telegram?.profileImageUrl) {
-            setProfileImage(data.social.telegram.profileImageUrl);
-          } else if (data.social?.discord?.profileImageUrl) {
-            setProfileImage(data.social.discord.profileImageUrl);
-          }
-        }
-        
-        // Fetch daily login streak data
-        fetchDailyLoginData(storedToken);
-      })
-      .catch(err => {
-        console.error("Error retrieving user information:", err);
-        if (err.response) {
-          console.error("Error response data:", err.response.data);
-          console.error("Error response status:", err.response.status);
-          console.error("Error response headers:", err.response.headers);
-        }
-        setIsLoading(false);
-      });
+          setIsLoading(false);
+        });
     } else {
       console.warn("No JWT token found - API authentication won't be possible");
       setIsLoading(false);
     }
   }, []);
 
-  // ➜ charge la balance on-chain au premier rendu ET à chaque changement d’adresse
-useEffect(() => {
-  (async () => {
-    if (!walletAddress) return;
-    const chainBal = await fetchTokenBalance(walletAddress);
-    if (chainBal !== null) setWalletBalance(chainBal);
-  })();
-}, [walletAddress]);
+  // Fetch PRISM reward status when token is available
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(({ data }) => {
+          if (data.success) {
+            setPrismRewardStatus({
+              canClaim: data.canClaim,
+              hoursLeft: data.hoursLeft || 0,
+              minutesLeft: data.minutesLeft || 0,
+              loading: false
+            });
+          }
+        })
+        .catch(err => console.error('[PRISM] Error fetching status:', err));
+    }
+  }, [token]);
 
-  
+  // ➜ charge la balance on-chain au premier rendu ET à chaque changement d’adresse
+  useEffect(() => {
+    (async () => {
+      if (!walletAddress) return;
+      const chainBal = await fetchTokenBalance(walletAddress);
+      if (chainBal !== null) setWalletBalance(chainBal);
+    })();
+  }, [walletAddress]);
+
+
   // Live counter effect: increment liveCounter each second up to todaysReward
   useEffect(() => {
     if (lastLoginTime && todaysReward != null) {
@@ -472,23 +500,23 @@ useEffect(() => {
       return () => clearInterval(interval);
     }
   }, [lastLoginTime, todaysReward]);
-  
+
   // Function to fetch daily login streak data
   const fetchDailyLoginData = async (authToken) => {
     // console.log("[REWARDS HUB] Début de récupération des données de login quotidien");
     // console.log("[REWARDS HUB] Token d'authentification:", authToken ? `${authToken.substring(0, 5)}...${authToken.substring(authToken.length - 5)}` : "Non défini");
-    
+
     try {
       // console.log(`[REWARDS HUB] Appel API vers: ${API_BASE_URL}/users/daily-login`);
-      
+
       const startTime = performance.now();
       const res = await axios.post(`${API_BASE_URL}/users/daily-login`, {}, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
       const endTime = performance.now();
-      
+
       // console.log(`[REWARDS HUB] Réponse API reçue en ${(endTime - startTime).toFixed(2)}ms:`, res.data);
-      
+
       // Détails sur le streak
       console.log("[REWARDS HUB] Information de streak:", {
         streakActuel: res.data.currentStreak,
@@ -496,28 +524,28 @@ useEffect(() => {
         streakMaximum: res.data.maxStreak,
         augmentationStreak: res.data.currentStreak > currentStreak
       });
-      
+
       setCurrentStreak(res.data.currentStreak);
       setMaxStreak(res.data.maxStreak);
-      
+
       // Détails sur la récompense
-       // on récupère ce que la back renvoie (fractionnaire depuis la dernière session)
-        const distributed = res.data.distributedReward;
-        // on calcule en plus le montant journalier "statique"
-        const staticReward = Math.min(res.data.currentStreak, 5) * 10;
-        console.log("[REWARDS HUB] Information de récompense:", {
-          distributed,
-          staticReward,
-          calcul: `${staticReward} tokens (streak ${res.data.currentStreak})`,
-          ancienneRécompense: todaysReward
-        });
-        setTodaysReward(staticReward);
-      
+      // on récupère ce que la back renvoie (fractionnaire depuis la dernière session)
+      const distributed = res.data.distributedReward;
+      // on calcule en plus le montant journalier "statique"
+      const staticReward = Math.min(res.data.currentStreak, 5) * 10;
+      console.log("[REWARDS HUB] Information de récompense:", {
+        distributed,
+        staticReward,
+        calcul: `${staticReward} tokens (streak ${res.data.currentStreak})`,
+        ancienneRécompense: todaysReward
+      });
+      setTodaysReward(staticReward);
+
       // IMPORTANT: Store both firstLoginOfDay and lastLogin
       if (res.data.firstLoginOfDay) {
         const firstLogin = new Date(res.data.firstLoginOfDay);
         setFirstLoginOfDay(firstLogin);
-        
+
         console.log("[REWARDS HUB] Information de premier login:", {
           premierLoginDuJour: firstLogin,
           heureActuelle: new Date(),
@@ -526,28 +554,28 @@ useEffect(() => {
       } else {
         console.log("[REWARDS HUB] Aucune information de premier login trouvée");
       }
-      
+
       // We still need lastLoginTime for streak calculations
       if (res.data.lastLogin) {
         const loginTime = new Date(res.data.lastLogin);
         setLastLoginTime(loginTime);
-        
+
         console.log("[REWARDS HUB] Information de dernier login:", {
           dernierLogin: loginTime
         });
       }
-      
+
       // Résumé de la réclamation quotidienne
-      const nextRewardTime = res.data.lastLogin ? 
+      const nextRewardTime = res.data.lastLogin ?
         new Date(new Date(res.data.lastLogin).getTime() + 86400000) : null;
-        
+
       console.log("[REWARDS HUB] Résumé de réclamation quotidienne:", {
         streakActuel: res.data.currentStreak,
         récompenseObtenue: res.data.todaysReward,
         prochaineRéclamationPossible: nextRewardTime,
         récompensePotentielleDemain: Math.min((res.data.currentStreak + 1), 5) * 10
       });
-      
+
     } catch (err) {
       console.error("[REWARDS HUB] Erreur critique lors de la récupération:", err);
       console.log("[REWARDS HUB] Détails de l'erreur:", {
@@ -566,42 +594,42 @@ useEffect(() => {
  * 1️⃣ on essaye via l’endpoint backend /users/token-balance
  * 2️⃣ si le backend n’est pas dispo, fallback direct on-chain avec ethers + MiniKit/Metamask
  */
-const fetchTokenBalance = async (address = walletAddress) => {
-  try {
-    if (!address) return null;
+  const fetchTokenBalance = async (address = walletAddress) => {
+    try {
+      if (!address) return null;
 
-    // ---- Méthode 1 : appel API (public, accepte ou non le JWT) ----
-    const apiRes = await axios.get(
-      `${API_BASE_URL}/users/token-balance/${address}`,
-      token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-    );
+      // ---- Méthode 1 : appel API (public, accepte ou non le JWT) ----
+      const apiRes = await axios.get(
+        `${API_BASE_URL}/users/token-balance/${address}`,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+      );
 
-    if (apiRes?.data?.status === 'success') {
-      return parseFloat(apiRes.data.balance);
+      if (apiRes?.data?.status === 'success') {
+        return parseFloat(apiRes.data.balance);
+      }
+
+      // ---- Méthode 2 : lecture direct on-chain ----
+      // MiniKit injecte un provider EIP-1193 compatible (<window.ethereum> ou <MiniKit.ethereum>)
+      const injected = window?.MiniKit?.ethereum || window.ethereum;
+      const provider = injected
+        ? new BrowserProvider(injected)          // ethers v6
+        : ethers.getDefaultProvider();           // public fallback (faible quota)
+
+      const contract = new Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
+
+      const [rawBalance, decimals] = await Promise.all([
+        contract.balanceOf(address),
+        contract.decimals()
+      ]);
+
+      return parseFloat(formatUnits(rawBalance, decimals));
+    } catch (err) {
+      console.error('❌ Erreur balance UMI :', err);
+      return null;
     }
+  };
 
-    // ---- Méthode 2 : lecture direct on-chain ----
-    // MiniKit injecte un provider EIP-1193 compatible (<window.ethereum> ou <MiniKit.ethereum>)
-    const injected = window?.MiniKit?.ethereum || window.ethereum;
-    const provider = injected
-      ? new BrowserProvider(injected)          // ethers v6
-      : ethers.getDefaultProvider();           // public fallback (faible quota)
 
-    const contract = new Contract(TOKEN_CONTRACT_ADDRESS, ERC20_ABI, provider);
-
-    const [rawBalance, decimals] = await Promise.all([
-      contract.balanceOf(address),
-      contract.decimals()
-    ]);
-
-    return parseFloat(formatUnits(rawBalance, decimals));
-  } catch (err) {
-    console.error('❌ Erreur balance UMI :', err);
-    return null;
-  }
-};
-
-  
   // Function to refresh token balance manually
   const refreshTokenBalance = async () => {
     setNotification({
@@ -609,9 +637,9 @@ const fetchTokenBalance = async (address = walletAddress) => {
       message: "Refreshing balance...",
       type: 'info'
     });
-    
+
     // const balance = await fetchTokenBalance();
-    
+
     // if (balance !== null) {
     //   setNotification({
     //     show: true,
@@ -627,18 +655,18 @@ const fetchTokenBalance = async (address = walletAddress) => {
     // }
 
     const bal = await fetchTokenBalance();
-     if (bal !== null) {
-        setWalletBalance(bal);
-       setNotification({ show: true, message: `Balance updated: ${bal.toFixed(2)} UMI`, type: 'success' });
-     } else {
-       setNotification({ show: true, message: 'Failed to refresh balance', type: 'error' });
-     }
-    
+    if (bal !== null) {
+      setWalletBalance(bal);
+      setNotification({ show: true, message: `Balance updated: ${bal.toFixed(2)} UMI`, type: 'success' });
+    } else {
+      setNotification({ show: true, message: 'Failed to refresh balance', type: 'error' });
+    }
+
     setTimeout(() => {
       setNotification({ show: false, message: '', type: 'info' });
     }, 3000);
   };
-  
+
   // Function to copy referral code
   const copyReferralCode = () => {
     if (!referralCode) {
@@ -647,28 +675,28 @@ const fetchTokenBalance = async (address = walletAddress) => {
         message: "No referral code available",
         type: 'error'
       });
-      
+
       setTimeout(() => {
         setNotification({ show: false, message: '', type: 'info' });
       }, 3000);
       return;
     }
-    
+
     navigator.clipboard.writeText(referralCode);
     setJustCopied(true);
-    
+
     setNotification({
       show: true,
       message: "Referral code copied!",
       type: 'success'
     });
-    
+
     setTimeout(() => {
       setJustCopied(false);
       setNotification({ show: false, message: '', type: 'info' });
     }, 2000);
   };
-  
+
   // Function to share referral
   const shareReferral = () => {
     if (!referralCode) {
@@ -677,33 +705,33 @@ const fetchTokenBalance = async (address = walletAddress) => {
         message: "No referral code available",
         type: 'error'
       });
-      
+
       setTimeout(() => {
         setNotification({ show: false, message: '', type: 'info' });
       }, 3000);
       return;
     }
-    
+
     if (navigator.share) {
       navigator.share({
         title: 'Join me on this app!',
         text: `Use my invitation code ${referralCode} to get 20 UMI bonus!`,
         url: window.location.origin
       })
-      .catch(err => console.error("Error sharing:", err));
+        .catch(err => console.error("Error sharing:", err));
     } else {
       copyReferralCode();
     }
   };
-  
+
   const handleBack = () => {
     console.log("Back button clicked");
   };
-  
+
   const toggleInfoModal = () => {
     setShowInfoModal(!showInfoModal);
   };
-  
+
   return (
     <div className="rewards-hub">
       <div className="background"></div>
@@ -715,12 +743,12 @@ const fetchTokenBalance = async (address = walletAddress) => {
               <div className="balance-text">
                 <span className="balance-label">Balance:</span>
                 <span className="balance-value">
-                {isLoading ? 'Loading…' :
-   walletBalance !== null ? `${walletBalance.toFixed(2)} UMI` : 'N/A'}
+                  {isLoading ? 'Loading…' :
+                    walletBalance !== null ? `${walletBalance.toFixed(2)} UMI` : 'N/A'}
                 </span>
               </div>
             </div>
-            
+
             {/* Social Links moved to top right */}
             <div className="social-links">
               {/* Telegram button */}
@@ -728,7 +756,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
                 <FaTelegramPlane size={18} />
                 <span>Join Us</span>
               </div>
-              
+
               {/* X button */}
               <div className="social-btn x-btn" onClick={openXProfile}>
                 <FaX />
@@ -737,7 +765,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
             </div>
           </div>
         </header>
-        
+
         {/* USER PROFILE SECTION */}
         <div className="profile-container">
           <div className="profile-image-container">
@@ -753,7 +781,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
             <h3 className="profile-username">
               {isLoading ? 'Loading...' : (username || 'User')}
             </h3>
-            
+
             {/* Human verification badge */}
             {isHumanVerified && (
               <div className="human-badge" title="Human verified">
@@ -762,7 +790,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
               </div>
             )}
           </div>
-          
+
           {/* Social verification badges */}
           <div className="social-badges">
             {socialVerifications.telegram?.verified && (
@@ -770,7 +798,7 @@ const fetchTokenBalance = async (address = walletAddress) => {
                 <FaTelegramPlane /> Telegram
               </span>
             )}
-            
+
             {socialVerifications.discord?.verified && (
               <span className="social-badge discord-badge">
                 <FaDiscord /> Discord
@@ -778,12 +806,12 @@ const fetchTokenBalance = async (address = walletAddress) => {
             )}
             {socialVerifications.twitter?.verified && (
               <span className="social-badge twitter-badge">
-                <FaX /> 
+                <FaX />
               </span>
             )}
           </div>
         </div>
-        
+
         {/* AUTO DISTRIBUTION INFO - TEXT ONLY */}
         <div className="auto-distribution-text">
           <p className="auto-dist-message">
@@ -792,101 +820,194 @@ const fetchTokenBalance = async (address = walletAddress) => {
           </p>
         </div>
 
-        {/* STREAK CONTAINER */}
-        <div className="streak-container">
-  <div className="streak-card">
-    <div className="streak-header">
-      <span className="streak-title">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" className="fire-icon">
-          <path d="M12 23c-4.9 0-9-4.1-9-9 0-3.5 1.5-6 4.4-8.6.3-.3.7-.4 1-.2.3.2.5.5.5.9 0 1.2.5 2.3 1.4 3 .2.2.5.2.8.1.2-.1.4-.4.4-.7V4c0-1.1.9-2 2-2h.5c3.9.6 6.9 4 6.9 8 0 1.7-1.3 3-3 3h-1.8c-.8 0-1.6.4-2.2 1s-.7 1.4-.6 2.2c.2 1.5 1.4 2.5 3 2.5.8 0 1.6-.4 2.1-1.1.8-1.2 2.4-1.5 3.5-.6.5.4.8 1 .8 1.6 0 3.3-3.8 6-9.2 6zm2.5-10.5c0 .3-.2.5-.5.5h-4c-.3 0-.5-.2-.5-.5s.2-.5.5-.5h4c.3 0 .5.2.5.5z"/>
-        </svg>
-        Daily Login
-      </span>
-      <div className="streak-info">
-        {isLoading ? (
-          <span className="streak-value">Loading...</span>
-        ) : (
-          <>
-            {currentStreak !== null && (
-              <div className="streak-badge" title="Current streak">
-                <span className="streak-multiplier">x{currentStreak}</span>
-              </div>
-            )}
-            <span className="streak-value">
-              Day {currentStreak || 0}
-            </span>
-          </>
-        )}
-      </div>
-    </div>
-    
-    <div className="progress-bar-container">
-      <div className="progress-bar-bg">
-        {isLoading ? (
-          <div className="progress-bar-loading"></div>
-        ) : (
-          <div 
-            className="progress-bar-fill" 
-            style={{ 
-              width: currentStreak !== null ? 
-                `${Math.min(currentStreak, 5) / 5 * 100}%` : 
-                '0%'
-            }}
-          ></div>
-        )}
-      </div>
-      
-      {/* Live token earnings counter */}
-      {firstLoginOfDay && todaysReward != null && (
-        <div className="earnings-display">
-          <div className="earnings-value">
-            <span className="earnings-number">{liveCounter.toFixed(4)}</span>
-            <span className="earnings-currency">UMI</span>
-          </div>
-          <div className="earnings-label">
-            Earning now
-            <div className="pulse-dot"></div>
+        {/* PRISM Daily Reward Card */}
+        <div className="prism-reward-card">
+          <div className="prism-reward-content">
+            <div className="prism-reward-icon">
+              <Coins size={24} />
+            </div>
+            <div className="prism-reward-text">
+              <h4>Daily Bonus: +100 UMI</h4>
+              <p>Open PRISM app and do a first trade to receive 100 UMI tokens</p>
+            </div>
+            <button
+              className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
+              onClick={async () => {
+                if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
+
+                // Set loading immediately to prevent double clicks
+                setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
+
+                // Open PRISM app
+                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+
+                // Claim reward
+                try {
+                  console.log('[PRISM] Claiming reward...');
+                  const response = await axios.post(
+                    `${API_BASE_URL}/users/claim-prism-reward`,
+                    {},
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                  );
+
+                  console.log('[PRISM] Response:', response.data);
+
+                  if (response.data.success) {
+                    setNotification({
+                      show: true,
+                      message: `🎉 ${response.data.message}`,
+                      type: 'success'
+                    });
+                    setPrismRewardStatus({
+                      canClaim: false,
+                      hoursLeft: 23,
+                      minutesLeft: 59,
+                      loading: false
+                    });
+                  } else {
+                    setNotification({
+                      show: true,
+                      message: response.data.message || 'Reward claimed!',
+                      type: 'info'
+                    });
+                    setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: false }));
+                  }
+                } catch (err) {
+                  console.error('[PRISM] Error:', err);
+                  const errData = err.response?.data;
+                  if (errData?.alreadyClaimed) {
+                    setPrismRewardStatus({
+                      canClaim: false,
+                      hoursLeft: errData.hoursLeft || 0,
+                      minutesLeft: errData.minutesLeft || 0,
+                      loading: false
+                    });
+                    setNotification({
+                      show: true,
+                      message: `Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`,
+                      type: 'info'
+                    });
+                  } else {
+                    setNotification({
+                      show: true,
+                      message: errData?.message || 'Error claiming reward. Please try again.',
+                      type: 'error'
+                    });
+                    // Re-enable button on error
+                    setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
+                  }
+                }
+
+                setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 4000);
+              }}
+              disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
+            >
+              {prismRewardStatus.loading ? (
+                <span>Claiming...</span>
+              ) : prismRewardStatus.canClaim ? (
+                <span>Open PRISM & Claim</span>
+              ) : (
+                <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
+              )}
+            </button>
           </div>
         </div>
-      )}
-    </div>
-    
-    {/* Ajout du message d'encouragement pour le streak - version minimaliste */}
-    {!isLoading && currentStreak !== null && (
-      <div className="streak-message">
-        {currentStreak < 5 ? (
-          <span>Come back tomorrow for <span className="highlight">x{currentStreak + 1}</span> more tokens</span>
-        ) : (
-          <span>Come back tomorrow to maintain streak</span>
-        )}
-      </div>
-    )}
-  </div>
-</div>
 
-        
+        {/* STREAK CONTAINER */}
+        <div className="streak-container">
+          <div className="streak-card">
+            <div className="streak-header">
+              <span className="streak-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" className="fire-icon">
+                  <path d="M12 23c-4.9 0-9-4.1-9-9 0-3.5 1.5-6 4.4-8.6.3-.3.7-.4 1-.2.3.2.5.5.5.9 0 1.2.5 2.3 1.4 3 .2.2.5.2.8.1.2-.1.4-.4.4-.7V4c0-1.1.9-2 2-2h.5c3.9.6 6.9 4 6.9 8 0 1.7-1.3 3-3 3h-1.8c-.8 0-1.6.4-2.2 1s-.7 1.4-.6 2.2c.2 1.5 1.4 2.5 3 2.5.8 0 1.6-.4 2.1-1.1.8-1.2 2.4-1.5 3.5-.6.5.4.8 1 .8 1.6 0 3.3-3.8 6-9.2 6zm2.5-10.5c0 .3-.2.5-.5.5h-4c-.3 0-.5-.2-.5-.5s.2-.5.5-.5h4c.3 0 .5.2.5.5z" />
+                </svg>
+                Daily Login
+              </span>
+              <div className="streak-info">
+                {isLoading ? (
+                  <span className="streak-value">Loading...</span>
+                ) : (
+                  <>
+                    {currentStreak !== null && (
+                      <div className="streak-badge" title="Current streak">
+                        <span className="streak-multiplier">x{currentStreak}</span>
+                      </div>
+                    )}
+                    <span className="streak-value">
+                      Day {currentStreak || 0}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="progress-bar-container">
+              <div className="progress-bar-bg">
+                {isLoading ? (
+                  <div className="progress-bar-loading"></div>
+                ) : (
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: currentStreak !== null ?
+                        `${Math.min(currentStreak, 5) / 5 * 100}%` :
+                        '0%'
+                    }}
+                  ></div>
+                )}
+              </div>
+
+              {/* Live token earnings counter */}
+              {firstLoginOfDay && todaysReward != null && (
+                <div className="earnings-display">
+                  <div className="earnings-value">
+                    <span className="earnings-number">{liveCounter.toFixed(4)}</span>
+                    <span className="earnings-currency">UMI</span>
+                  </div>
+                  <div className="earnings-label">
+                    Earning now
+                    <div className="pulse-dot"></div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Ajout du message d'encouragement pour le streak - version minimaliste */}
+            {!isLoading && currentStreak !== null && (
+              <div className="streak-message">
+                {currentStreak < 5 ? (
+                  <span>Come back tomorrow for <span className="highlight">x{currentStreak + 1}</span> more tokens</span>
+                ) : (
+                  <span>Come back tomorrow to maintain streak</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+
         {/* Claim Button - Moved below daily login and redesigned to be more minimalist */}
-       
-{/* Claim Button - More visible while maintaining minimalism */}
-<div className="claim-container">
-  <button
-    className="claim-button"
-    disabled={isLoading || !umiBalance}
-    onClick={claimTokens}
-  >
-    {isLoading ? (
-      <span className="claim-text">Loading...</span>
-    ) : !umiBalance ? (
-      <span className="claim-text">No more UMI to grab</span>
-    ) : (
-      <div className="claim-content">
-        <span className="claim-text">Grab</span>
-        <span className="claim-amount">{parseFloat(umiBalance).toFixed(2)} earned UMI</span>
-      </div>
-    )}
-  </button>
-</div>
-        
+
+        {/* Claim Button - More visible while maintaining minimalism */}
+        <div className="claim-container">
+          <button
+            className="claim-button"
+            disabled={isLoading || !umiBalance}
+            onClick={claimTokens}
+          >
+            {isLoading ? (
+              <span className="claim-text">Loading...</span>
+            ) : !umiBalance ? (
+              <span className="claim-text">No more UMI to grab</span>
+            ) : (
+              <div className="claim-content">
+                <span className="claim-text">Grab</span>
+                <span className="claim-amount">{parseFloat(umiBalance).toFixed(2)} earned UMI</span>
+              </div>
+            )}
+          </button>
+        </div>
+
         {/* REFERRAL CODE SECTION - MINIMALIST */}
         <div className="referral-section">
           <div className="referral-card">
@@ -907,13 +1028,13 @@ const fetchTokenBalance = async (address = walletAddress) => {
             </div>
           </div>
         </div>
-        
+
         {/* CHALLENGES SECTION - MINIMALIST */}
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
           </div>
-          
+
           <div className="coming-soon-container">
             <div className="coming-soon-icon">
               <Award size={28} />
@@ -923,14 +1044,14 @@ const fetchTokenBalance = async (address = walletAddress) => {
           </div>
         </div>
       </div>
-      
+
       {/* Notification */}
       {notification.show && (
         <div className={`notification ${notification.type}`}>
           <span>{notification.message}</span>
         </div>
       )}
-      
+
       <style jsx>{`
         /* Reset and base styles */
         *, *:before, *:after {
@@ -1638,6 +1759,79 @@ const fetchTokenBalance = async (address = walletAddress) => {
             color: rgba(255, 255, 255, 0.3);
           }
         }
+        
+            /* PRISM Daily Reward Card */
+            .prism-reward-card {
+              width: 100%;
+              background: linear-gradient(135deg, rgba(242, 128, 17, 0.15) 0%, rgba(242, 128, 17, 0.05) 100%);
+              border: 1px solid rgba(242, 128, 17, 0.3);
+              border-radius: 12px;
+              padding: 1rem;
+              margin-bottom: 1rem;
+            }
+            
+            .prism-reward-content {
+              display: flex;
+              align-items: center;
+              gap: 0.75rem;
+            }
+            
+            .prism-reward-icon {
+              width: 48px;
+              height: 48px;
+              background: linear-gradient(135deg, #f28011, #f16403);
+              border-radius: 12px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              flex-shrink: 0;
+            }
+            
+            .prism-reward-text {
+              flex: 1;
+              min-width: 0;
+            }
+            
+            .prism-reward-text h4 {
+              margin: 0;
+              font-size: 0.95rem;
+              font-weight: 600;
+              color: #303421;
+            }
+            
+            .prism-reward-text p {
+              margin: 0.25rem 0 0;
+              font-size: 0.75rem;
+              color: rgba(48, 52, 33, 0.7);
+              line-height: 1.3;
+            }
+            
+            .prism-claim-btn {
+              padding: 0.5rem 1rem;
+              background: linear-gradient(135deg, #f28011, #f16403);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 0.8rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              white-space: nowrap;
+              flex-shrink: 0;
+            }
+            
+            .prism-claim-btn:hover:not(.disabled) {
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(242, 128, 17, 0.3);
+            }
+            
+            .prism-claim-btn.disabled {
+              background: rgba(48, 52, 33, 0.2);
+              color: rgba(48, 52, 33, 0.6);
+              cursor: not-allowed;
+            }
+            
             .claim-container {
     display: flex;
     justify-content: center;
