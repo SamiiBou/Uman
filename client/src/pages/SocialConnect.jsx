@@ -178,11 +178,17 @@ const SocialConnect = () => {
 
   // Fetch PRISM reward status on mount
   useEffect(() => {
+    console.log('[PRISM DEBUG] ====== PRISM Reward Status Check ======');
+    console.log('[PRISM DEBUG] Token from state:', token ? `Present (${token.substring(0, 20)}...)` : 'MISSING');
+    console.log('[PRISM DEBUG] API_BASE_URL:', API_BASE_URL);
+
     if (token) {
+      console.log('[PRISM DEBUG] Fetching reward status...');
       axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(({ data }) => {
+          console.log('[PRISM DEBUG] Status response:', data);
           if (data.success) {
             setPrismRewardStatus({
               canClaim: data.canClaim,
@@ -190,11 +196,15 @@ const SocialConnect = () => {
               minutesLeft: data.minutesLeft || 0,
               loading: false
             });
+            console.log('[PRISM DEBUG] canClaim:', data.canClaim);
           }
         })
         .catch(err => {
-          console.error("Error fetching PRISM reward status:", err);
+          console.error('[PRISM DEBUG] Error fetching status:', err);
+          console.error('[PRISM DEBUG] Error response:', err.response?.data);
         });
+    } else {
+      console.warn('[PRISM DEBUG] No token available - cannot check reward status');
     }
   }, [token]);
 
