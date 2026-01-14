@@ -49,6 +49,16 @@ const SocialConnect = () => {
     minutesLeft: 0,
     loading: false
   });
+
+  // PRISM 5-Star Review Challenge state
+  const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
+    participantCount: 0,
+    maxParticipants: 100,
+    spotsRemaining: 100,
+    isChallengeOpen: true,
+    hasParticipated: false,
+    loading: true
+  });
   const [showIdCard, setShowIdCard] = useState(false);
   const [idCardVisible, setIdCardVisible] = useState(false); // Modified: Default to false to hide card initially
   const [socialHandles, setSocialHandles] = useState({
@@ -207,6 +217,44 @@ const SocialConnect = () => {
       console.warn('[PRISM DEBUG] No token available - cannot check reward status');
     }
   }, [token]);
+
+  // Fetch PRISM 5-Star Review Challenge status
+  useEffect(() => {
+    const fetchChallengeStatus = async () => {
+      try {
+        const statusRes = await axios.get(`${API_BASE_URL}/users/prism-review-challenge-status`);
+        if (statusRes.data.success) {
+          setReviewChallengeStatus(prev => ({
+            ...prev,
+            participantCount: statusRes.data.participantCount,
+            maxParticipants: statusRes.data.maxParticipants,
+            spotsRemaining: statusRes.data.spotsRemaining,
+            isChallengeOpen: statusRes.data.isChallengeOpen,
+            loading: false
+          }));
+        }
+      } catch (err) {
+        console.error('[PRISM Review Challenge] Error:', err);
+        setReviewChallengeStatus(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchChallengeStatus();
+  }, []);
+
+  // Check if user has participated in review challenge
+  useEffect(() => {
+    if (token && userId) {
+      axios.get(`${API_BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(({ data }) => {
+          if (data.prismReviewChallenge?.participated) {
+            setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+          }
+        })
+        .catch(err => console.error('[PRISM Review] Error:', err));
+    }
+  }, [token, userId]);
 
   // Désactivé : la carte ID ne s'affiche plus
   // useEffect(() => {
@@ -729,6 +777,60 @@ const SocialConnect = () => {
                   ) : (
                     <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
                   )}
+                </button>
+              </div>
+            </div>
+
+            {/* PRISM 5-Star Review Challenge - Compact */}
+            <div className="prism-review-challenge-compact">
+              <div className="challenge-compact-content">
+                <div className="challenge-compact-left">
+                  <div className="challenge-compact-icon">
+                    <Award size={18} />
+                  </div>
+                  <div className="challenge-compact-text">
+                    <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
+                    <div className="challenge-compact-counter">
+                      <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className={`challenge-compact-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+                  onClick={async () => {
+                    if (!reviewChallengeStatus.isChallengeOpen) {
+                      setNotification({ show: true, message: 'Challenge closed!', type: 'info' });
+                      return;
+                    }
+                    if (reviewChallengeStatus.hasParticipated) {
+                      window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+                      return;
+                    }
+                    try {
+                      const response = await axios.post(
+                        `${API_BASE_URL}/users/participate-prism-review`,
+                        {},
+                        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                      );
+                      if (response.data.success) {
+                        setNotification({ show: true, message: `🎉 Registered! You are #${response.data.participantNumber}. Rate 5 stars & send screenshot to support!`, type: 'success' });
+                        setReviewChallengeStatus(prev => ({ ...prev, participantCount: response.data.participantNumber, spotsRemaining: response.data.spotsRemaining, hasParticipated: true, isChallengeOpen: response.data.spotsRemaining > 0 }));
+                      }
+                    } catch (err) {
+                      if (err.response?.data?.alreadyParticipated) {
+                        setNotification({ show: true, message: 'Already participated!', type: 'info' });
+                        setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+                      } else if (err.response?.data?.challengeClosed) {
+                        setNotification({ show: true, message: 'Challenge closed!', type: 'info' });
+                      } else {
+                        setNotification({ show: true, message: err.response?.data?.message || 'Error', type: 'error' });
+                      }
+                    }
+                    window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+                  }}
+                  disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+                >
+                  {!reviewChallengeStatus.isChallengeOpen ? 'Closed' : reviewChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
                 </button>
               </div>
             </div>
@@ -1405,6 +1507,91 @@ const SocialConnect = () => {
         .prism-claim-btn.disabled {
           background: rgba(48, 52, 33, 0.2);
           color: rgba(48, 52, 33, 0.6);
+          cursor: not-allowed;
+        }
+
+        /* PRISM 5-Star Review Challenge - Compact */
+        .prism-review-challenge-compact {
+          width: 100%;
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(241, 100, 3, 0.08) 100%);
+          border: 1px solid rgba(255, 215, 0, 0.35);
+          border-radius: 10px;
+          padding: 0.5rem 0.65rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .challenge-compact-content {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.4rem;
+        }
+        
+        .challenge-compact-left {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .challenge-compact-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          background: linear-gradient(135deg, #FFD700 0%, #f28011 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          flex-shrink: 0;
+        }
+        
+        .challenge-compact-text {
+          flex: 1;
+          min-width: 0;
+        }
+        
+        .challenge-compact-title {
+          font-size: 0.7rem;
+          font-weight: 500;
+          color: #303421;
+          display: block;
+          line-height: 1.3;
+        }
+        
+        .challenge-compact-title strong {
+          color: #f28011;
+        }
+        
+        .challenge-compact-counter {
+          font-size: 0.6rem;
+          color: rgba(48, 52, 33, 0.6);
+          margin-top: 0.05rem;
+        }
+        
+        .challenge-compact-btn {
+          padding: 0.3rem 0.6rem;
+          background: linear-gradient(135deg, #FFD700 0%, #f28011 100%);
+          color: white;
+          border: none;
+          border-radius: 5px;
+          font-size: 0.65rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        
+        .challenge-compact-btn:hover:not(.disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
+        }
+        
+        .challenge-compact-btn.disabled {
+          background: rgba(48, 52, 33, 0.2);
+          color: rgba(48, 52, 33, 0.5);
           cursor: not-allowed;
         }
         

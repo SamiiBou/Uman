@@ -875,95 +875,104 @@ const RewardsHub = () => {
           </p>
         </div>
 
-        {/* PRISM Daily Reward Card */}
-        <div className="prism-reward-card">
+        {/* PRISM Daily Reward Card - More Compact */}
+        <div className="prism-reward-card compact">
           <div className="prism-reward-content">
-            <div className="prism-reward-icon">
-              <Coins size={24} />
+            <div className="prism-reward-icon small">
+              <Coins size={20} />
             </div>
             <div className="prism-reward-text">
               <h4>Daily Bonus: +100 UMI</h4>
-              <p>Open PRISM app and do a first trade to receive 100 UMI tokens</p>
+              <p>Open PRISM app and trade to receive 100 UMI</p>
             </div>
             <button
               className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
               onClick={async () => {
                 if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
-
-                // Set loading immediately to prevent double clicks
                 setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
-
-                // Open PRISM app
                 window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-
-                // Claim reward
                 try {
-                  console.log('[PRISM] Claiming reward...');
                   const response = await axios.post(
                     `${API_BASE_URL}/users/claim-prism-reward`,
                     {},
                     { headers: token ? { Authorization: `Bearer ${token}` } : {} }
                   );
-
-                  console.log('[PRISM] Response:', response.data);
-
                   if (response.data.success) {
-                    setNotification({
-                      show: true,
-                      message: `🎉 ${response.data.message}`,
-                      type: 'success'
-                    });
-                    setPrismRewardStatus({
-                      canClaim: false,
-                      hoursLeft: 23,
-                      minutesLeft: 59,
-                      loading: false
-                    });
+                    setNotification({ show: true, message: `🎉 ${response.data.message}`, type: 'success' });
+                    setPrismRewardStatus({ canClaim: false, hoursLeft: 23, minutesLeft: 59, loading: false });
                   } else {
-                    setNotification({
-                      show: true,
-                      message: response.data.message || 'Reward claimed!',
-                      type: 'info'
-                    });
+                    setNotification({ show: true, message: response.data.message || 'Reward claimed!', type: 'info' });
                     setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: false }));
                   }
                 } catch (err) {
-                  console.error('[PRISM] Error:', err);
                   const errData = err.response?.data;
                   if (errData?.alreadyClaimed) {
-                    setPrismRewardStatus({
-                      canClaim: false,
-                      hoursLeft: errData.hoursLeft || 0,
-                      minutesLeft: errData.minutesLeft || 0,
-                      loading: false
-                    });
-                    setNotification({
-                      show: true,
-                      message: `Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`,
-                      type: 'info'
-                    });
+                    setPrismRewardStatus({ canClaim: false, hoursLeft: errData.hoursLeft || 0, minutesLeft: errData.minutesLeft || 0, loading: false });
+                    setNotification({ show: true, message: `Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`, type: 'info' });
                   } else {
-                    setNotification({
-                      show: true,
-                      message: errData?.message || 'Error claiming reward. Please try again.',
-                      type: 'error'
-                    });
-                    // Re-enable button on error
+                    setNotification({ show: true, message: errData?.message || 'Error claiming reward.', type: 'error' });
                     setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
                   }
                 }
-
                 setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 4000);
               }}
               disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
             >
-              {prismRewardStatus.loading ? (
-                <span>Claiming...</span>
-              ) : prismRewardStatus.canClaim ? (
-                <span>Open PRISM & Claim</span>
-              ) : (
-                <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
-              )}
+              {prismRewardStatus.loading ? 'Claiming...' : prismRewardStatus.canClaim ? 'Open PRISM & Claim' : `${prismRewardStatus.hoursLeft}h ${prismRewardStatus.minutesLeft}m`}
+            </button>
+          </div>
+        </div>
+
+        {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
+        <div className="prism-review-challenge-compact">
+          <div className="challenge-compact-content">
+            <div className="challenge-compact-left">
+              <div className="challenge-compact-icon">
+                <Award size={18} />
+              </div>
+              <div className="challenge-compact-text">
+                <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
+                <div className="challenge-compact-counter">
+                  <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
+                </div>
+              </div>
+            </div>
+            <button
+              className={`challenge-compact-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+              onClick={async () => {
+                if (!reviewChallengeStatus.isChallengeOpen) {
+                  setNotification({ show: true, message: 'Challenge closed! Maximum participants reached.', type: 'info' });
+                  return;
+                }
+                if (reviewChallengeStatus.hasParticipated) {
+                  window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+                  return;
+                }
+                try {
+                  const response = await axios.post(
+                    `${API_BASE_URL}/users/participate-prism-review`,
+                    {},
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                  );
+                  if (response.data.success) {
+                    setNotification({ show: true, message: `🎉 Registered! You are #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`, type: 'success' });
+                    setReviewChallengeStatus(prev => ({ ...prev, participantCount: response.data.participantNumber, spotsRemaining: response.data.spotsRemaining, hasParticipated: true, isChallengeOpen: response.data.spotsRemaining > 0 }));
+                  }
+                } catch (err) {
+                  if (err.response?.data?.alreadyParticipated) {
+                    setNotification({ show: true, message: 'You have already participated!', type: 'info' });
+                    setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+                  } else if (err.response?.data?.challengeClosed) {
+                    setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
+                  } else {
+                    setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
+                  }
+                }
+                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+              }}
+              disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+            >
+              {!reviewChallengeStatus.isChallengeOpen ? 'Closed' : reviewChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
             </button>
           </div>
         </div>
@@ -2017,32 +2026,42 @@ const RewardsHub = () => {
           }
         }
         
-            /* PRISM Daily Reward Card */
+            /* PRISM Daily Reward Card - Compact */
             .prism-reward-card {
               width: 100%;
               background: linear-gradient(135deg, rgba(242, 128, 17, 0.15) 0%, rgba(242, 128, 17, 0.05) 100%);
               border: 1px solid rgba(242, 128, 17, 0.3);
-              border-radius: 12px;
-              padding: 1rem;
-              margin-bottom: 1rem;
+              border-radius: 10px;
+              padding: 0.75rem;
+              margin-bottom: 0.5rem;
+            }
+            
+            .prism-reward-card.compact {
+              padding: 0.6rem 0.75rem;
             }
             
             .prism-reward-content {
               display: flex;
               align-items: center;
-              gap: 0.75rem;
+              gap: 0.6rem;
             }
             
             .prism-reward-icon {
-              width: 48px;
-              height: 48px;
+              width: 42px;
+              height: 42px;
               background: linear-gradient(135deg, #f28011, #f16403);
-              border-radius: 12px;
+              border-radius: 10px;
               display: flex;
               align-items: center;
               justify-content: center;
               color: white;
               flex-shrink: 0;
+            }
+            
+            .prism-reward-icon.small {
+              width: 36px;
+              height: 36px;
+              border-radius: 8px;
             }
             
             .prism-reward-text {
@@ -2052,25 +2071,25 @@ const RewardsHub = () => {
             
             .prism-reward-text h4 {
               margin: 0;
-              font-size: 0.95rem;
+              font-size: 0.85rem;
               font-weight: 600;
               color: #303421;
             }
             
             .prism-reward-text p {
-              margin: 0.25rem 0 0;
-              font-size: 0.75rem;
+              margin: 0.15rem 0 0;
+              font-size: 0.7rem;
               color: rgba(48, 52, 33, 0.7);
-              line-height: 1.3;
+              line-height: 1.2;
             }
             
             .prism-claim-btn {
-              padding: 0.5rem 1rem;
+              padding: 0.4rem 0.8rem;
               background: linear-gradient(135deg, #f28011, #f16403);
               color: white;
               border: none;
-              border-radius: 8px;
-              font-size: 0.8rem;
+              border-radius: 6px;
+              font-size: 0.75rem;
               font-weight: 600;
               cursor: pointer;
               transition: all 0.2s;
@@ -2086,6 +2105,91 @@ const RewardsHub = () => {
             .prism-claim-btn.disabled {
               background: rgba(48, 52, 33, 0.2);
               color: rgba(48, 52, 33, 0.6);
+              cursor: not-allowed;
+            }
+
+            /* PRISM 5-Star Review Challenge - Compact */
+            .prism-review-challenge-compact {
+              width: 100%;
+              background: linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(241, 100, 3, 0.08) 100%);
+              border: 1px solid rgba(255, 215, 0, 0.35);
+              border-radius: 10px;
+              padding: 0.6rem 0.75rem;
+              margin-bottom: 1rem;
+            }
+            
+            .challenge-compact-content {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              gap: 0.5rem;
+            }
+            
+            .challenge-compact-left {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              flex: 1;
+              min-width: 0;
+            }
+            
+            .challenge-compact-icon {
+              width: 32px;
+              height: 32px;
+              border-radius: 8px;
+              background: linear-gradient(135deg, #FFD700 0%, #f28011 100%);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: white;
+              flex-shrink: 0;
+            }
+            
+            .challenge-compact-text {
+              flex: 1;
+              min-width: 0;
+            }
+            
+            .challenge-compact-title {
+              font-size: 0.75rem;
+              font-weight: 500;
+              color: #303421;
+              display: block;
+              line-height: 1.3;
+            }
+            
+            .challenge-compact-title strong {
+              color: #f28011;
+            }
+            
+            .challenge-compact-counter {
+              font-size: 0.65rem;
+              color: rgba(48, 52, 33, 0.6);
+              margin-top: 0.1rem;
+            }
+            
+            .challenge-compact-btn {
+              padding: 0.35rem 0.7rem;
+              background: linear-gradient(135deg, #FFD700 0%, #f28011 100%);
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 0.7rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              white-space: nowrap;
+              flex-shrink: 0;
+            }
+            
+            .challenge-compact-btn:hover:not(.disabled) {
+              transform: translateY(-1px);
+              box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
+            }
+            
+            .challenge-compact-btn.disabled {
+              background: rgba(48, 52, 33, 0.2);
+              color: rgba(48, 52, 33, 0.5);
               cursor: not-allowed;
             }
             
