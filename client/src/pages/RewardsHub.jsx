@@ -923,7 +923,7 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
+        {/* PRISM 5-Star Review Challenge - Compact Version at Top - TEMPORARILY HIDDEN
         <div className="prism-review-challenge-compact">
           <div className="challenge-compact-content">
             <div className="challenge-compact-left">
@@ -976,6 +976,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+        */}
 
         {/* STREAK CONTAINER */}
         <div className="streak-container">
@@ -1093,13 +1094,12 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
+        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge - TEMPORARILY HIDDEN
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
           </div>
 
-          {/* PRISM 5-Star Review Challenge Card */}
           <div className="challenge-card prism-review-challenge">
             <div className="challenge-header">
               <div className="challenge-icon">
@@ -1138,13 +1138,11 @@ const RewardsHub = () => {
                 }
 
                 if (reviewChallengeStatus.hasParticipated) {
-                  // Already participated, just open the app
                   window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
                   return;
                 }
 
                 try {
-                  // Register participation
                   const response = await axios.post(
                     `${API_BASE_URL}/users/participate-prism-review`,
                     {},
@@ -1176,7 +1174,6 @@ const RewardsHub = () => {
                   }
                 }
 
-                // Open PRISM app
                 window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
               }}
               disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
@@ -1191,6 +1188,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+        */}
       </div>
 
       {/* Notification */}
