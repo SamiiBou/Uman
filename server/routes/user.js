@@ -131,6 +131,94 @@ router.post('/claim-prism-reward', authenticateToken, async (req, res) => {
   }
 });
 
+// ========== PRISM 5-Star Review Challenge ==========
+// Global counter stored in a simple document (or we can use a Challenge collection)
+// For simplicity, we'll use a dedicated document in a "challenges" collection
+
+// Get PRISM 5-Star Review Challenge status
+router.get('/prism-review-challenge-status', async (req, res) => {
+  try {
+    // Count how many users have participated
+    const participantCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
+    const maxParticipants = 100;
+    const spotsRemaining = Math.max(0, maxParticipants - participantCount);
+    const isChallengeOpen = participantCount < maxParticipants;
+
+    return res.json({
+      success: true,
+      participantCount,
+      maxParticipants,
+      spotsRemaining,
+      isChallengeOpen,
+      reward: '0.2 WLD'
+    });
+  } catch (error) {
+    console.error('[PRISM Review Challenge] Error getting status:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Participate in PRISM 5-Star Review Challenge
+router.post('/participate-prism-review', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Check if user already participated
+    if (user.prismReviewChallenge?.participated) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already participated in this challenge',
+        alreadyParticipated: true
+      });
+    }
+
+    // Count current participants (atomic check)
+    const currentCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
+    const maxParticipants = 100;
+
+    if (currentCount >= maxParticipants) {
+      return res.status(400).json({
+        success: false,
+        message: 'Challenge is closed! Maximum participants reached (100/100)',
+        challengeClosed: true
+      });
+    }
+
+    // Mark user as participated
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        'prismReviewChallenge.participated': true,
+        'prismReviewChallenge.participatedAt': new Date()
+      }
+    });
+
+    // Get updated count
+    const newCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
+
+    console.log(`[PRISM Review Challenge] User ${userId} participated. Total: ${newCount}/100`);
+
+    return res.json({
+      success: true,
+      message: 'Successfully registered for the challenge! Rate PRISM 5 stars and send your screenshot to support to receive 0.2 WLD.',
+      participantNumber: newCount,
+      spotsRemaining: Math.max(0, maxParticipants - newCount)
+    });
+
+  } catch (error) {
+    console.error('[PRISM Review Challenge] Error participating:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Get PRISM reward status (check if can claim)
 router.get('/prism-reward-status', authenticateToken, async (req, res) => {
   try {

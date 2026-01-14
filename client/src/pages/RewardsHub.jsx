@@ -62,6 +62,17 @@ const RewardsHub = () => {
     minutesLeft: 0,
     loading: false
   });
+
+  // PRISM 5-Star Review Challenge state
+  const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
+    participantCount: 0,
+    maxParticipants: 100,
+    spotsRemaining: 100,
+    isChallengeOpen: true,
+    hasParticipated: false,
+    loading: true
+  });
+
   const [challenges, setChallenges] = useState([
     {
       id: 1,
@@ -465,6 +476,50 @@ const RewardsHub = () => {
         .catch(err => console.error('[PRISM] Error fetching status:', err));
     }
   }, [token]);
+
+  // Fetch PRISM 5-Star Review Challenge status
+  useEffect(() => {
+    const fetchChallengeStatus = async () => {
+      try {
+        // Fetch global challenge status (public endpoint)
+        const statusRes = await axios.get(`${API_BASE_URL}/users/prism-review-challenge-status`);
+
+        if (statusRes.data.success) {
+          setReviewChallengeStatus(prev => ({
+            ...prev,
+            participantCount: statusRes.data.participantCount,
+            maxParticipants: statusRes.data.maxParticipants,
+            spotsRemaining: statusRes.data.spotsRemaining,
+            isChallengeOpen: statusRes.data.isChallengeOpen,
+            loading: false
+          }));
+        }
+      } catch (err) {
+        console.error('[PRISM Review Challenge] Error fetching status:', err);
+        setReviewChallengeStatus(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchChallengeStatus();
+  }, []);
+
+  // Check if current user has already participated in review challenge
+  useEffect(() => {
+    if (token && userId) {
+      // We check by trying to call participate - if already participated, we get that info
+      // Or we could add a dedicated endpoint. For now, we'll check via auth/me if the field exists
+      axios.get(`${API_BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(({ data }) => {
+          if (data.prismReviewChallenge?.participated) {
+            setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+          }
+        })
+        .catch(err => console.error('[PRISM Review] Error checking participation:', err));
+    }
+  }, [token, userId]);
+
 
   // ➜ charge la balance on-chain au premier rendu ET à chaque changement d’adresse
   useEffect(() => {
@@ -1029,18 +1084,102 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* CHALLENGES SECTION - MINIMALIST */}
+        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
           </div>
 
-          <div className="coming-soon-container">
-            <div className="coming-soon-icon">
-              <Award size={28} />
+          {/* PRISM 5-Star Review Challenge Card */}
+          <div className="challenge-card prism-review-challenge">
+            <div className="challenge-header">
+              <div className="challenge-icon">
+                <Award size={24} />
+              </div>
+              <div className="challenge-badge limited">
+                <span>Limited to 100 first users!</span>
+              </div>
             </div>
-            <h3 className="coming-soon-title">Coming Soon!</h3>
-            <p className="coming-soon-text">Complete challenges and earn UMI</p>
+
+            <div className="challenge-content">
+              <h4 className="challenge-title">⭐ Rate PRISM 5 Stars</h4>
+              <p className="challenge-description">
+                Put a 5-star review on PRISM app and send screenshot to our support team to receive <strong>0.2 WLD</strong>
+              </p>
+
+              <div className="challenge-counter">
+                <div className="counter-bar">
+                  <div
+                    className="counter-fill"
+                    style={{ width: `${(reviewChallengeStatus.participantCount / 100) * 100}%` }}
+                  ></div>
+                </div>
+                <span className="counter-text">
+                  {reviewChallengeStatus.participantCount}/100 participants
+                </span>
+              </div>
+            </div>
+
+            <button
+              className={`challenge-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+              onClick={async () => {
+                if (!reviewChallengeStatus.isChallengeOpen) {
+                  setNotification({ show: true, message: 'Challenge is closed! Maximum participants reached.', type: 'info' });
+                  return;
+                }
+
+                if (reviewChallengeStatus.hasParticipated) {
+                  // Already participated, just open the app
+                  window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+                  return;
+                }
+
+                try {
+                  // Register participation
+                  const response = await axios.post(
+                    `${API_BASE_URL}/users/participate-prism-review`,
+                    {},
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                  );
+
+                  if (response.data.success) {
+                    setNotification({
+                      show: true,
+                      message: `🎉 Registered! You are participant #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`,
+                      type: 'success'
+                    });
+                    setReviewChallengeStatus(prev => ({
+                      ...prev,
+                      participantCount: response.data.participantNumber,
+                      spotsRemaining: response.data.spotsRemaining,
+                      hasParticipated: true,
+                      isChallengeOpen: response.data.spotsRemaining > 0
+                    }));
+                  }
+                } catch (err) {
+                  if (err.response?.data?.alreadyParticipated) {
+                    setNotification({ show: true, message: 'You have already participated!', type: 'info' });
+                    setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+                  } else if (err.response?.data?.challengeClosed) {
+                    setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
+                  } else {
+                    setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
+                  }
+                }
+
+                // Open PRISM app
+                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+              }}
+              disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+            >
+              {!reviewChallengeStatus.isChallengeOpen ? (
+                <span>Challenge Closed</span>
+              ) : reviewChallengeStatus.hasParticipated ? (
+                <span>Open PRISM App</span>
+              ) : (
+                <span>Participate & Rate ⭐</span>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -1642,6 +1781,124 @@ const RewardsHub = () => {
         .coming-soon-text {
           font-size: 0.9rem;
           color: rgba(48, 52, 33, 0.7);
+        }
+
+        /* PRISM 5-Star Review Challenge Card */
+        .challenge-card {
+          padding: 1rem;
+          background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(241, 100, 3, 0.06) 100%);
+        }
+        
+        .challenge-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 0.75rem;
+        }
+        
+        .challenge-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #FFD700 0%, #f28011 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+        
+        .challenge-badge.limited {
+          background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+          color: white;
+          padding: 0.25rem 0.6rem;
+          border-radius: 12px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.9; transform: scale(1.02); }
+        }
+        
+        .challenge-content {
+          margin-bottom: 1rem;
+        }
+        
+        .challenge-title {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #303421;
+          margin-bottom: 0.4rem;
+        }
+        
+        .challenge-description {
+          font-size: 0.85rem;
+          color: rgba(48, 52, 33, 0.75);
+          line-height: 1.4;
+          margin-bottom: 0.75rem;
+        }
+        
+        .challenge-description strong {
+          color: #f28011;
+          font-weight: 600;
+        }
+        
+        .challenge-counter {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+        }
+        
+        .counter-bar {
+          width: 100%;
+          height: 8px;
+          background: rgba(48, 52, 33, 0.1);
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        
+        .counter-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #f28011 0%, #FFD700 100%);
+          border-radius: 4px;
+          transition: width 0.5s ease;
+        }
+        
+        .counter-text {
+          font-size: 0.75rem;
+          color: rgba(48, 52, 33, 0.65);
+          font-weight: 500;
+        }
+        
+        .challenge-btn {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border: none;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #f28011 0%, #FF8C00 100%);
+          color: white;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(242, 128, 17, 0.3);
+        }
+        
+        .challenge-btn:hover:not(.disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(242, 128, 17, 0.4);
+        }
+        
+        .challenge-btn:active:not(.disabled) {
+          transform: translateY(0);
+        }
+        
+        .challenge-btn.disabled {
+          background: linear-gradient(135deg, #888 0%, #666 100%);
+          cursor: not-allowed;
+          box-shadow: none;
         }
         
         /* NOTIFICATION */

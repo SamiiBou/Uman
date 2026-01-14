@@ -1,15 +1,15 @@
 import mongoose from 'mongoose';
-import crypto   from 'crypto';
+import crypto from 'crypto';
 
 /* ------------------------------------------------------------------ */
 /* 📦  SOUS-SCHÉMAS                                                   */
 /* ------------------------------------------------------------------ */
 const SocialVerificationSchema = new mongoose.Schema(
   {
-    verified  : { type: Boolean, default: false },
-    timestamp : { type: Date,    default: Date.now },
-    txHash    : { type: String,  default: null },
-    proofHash : { type: String,  default: null },
+    verified: { type: Boolean, default: false },
+    timestamp: { type: Date, default: Date.now },
+    txHash: { type: String, default: null },
+    proofHash: { type: String, default: null },
   },
   { _id: false }
 );
@@ -17,16 +17,16 @@ const SocialVerificationSchema = new mongoose.Schema(
 const ClaimPendingSchema = new mongoose.Schema(
   {
     amount: { type: Number, min: 0, required: true },
-    nonce : { type: String, required: true },
+    nonce: { type: String, required: true },
   },
   { _id: false }
 );
 
 const ClaimHistorySchema = new mongoose.Schema(
   {
-    amount : { type: Number, min: 0, required: true },
-    txHash : { type: String, required: true },
-    at     : { type: Date,   default: Date.now },
+    amount: { type: Number, min: 0, required: true },
+    txHash: { type: String, required: true },
+    at: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -37,15 +37,15 @@ const ClaimHistorySchema = new mongoose.Schema(
 const UserSchema = new mongoose.Schema(
   {
     /* ------- Identité & login ------------------------------------ */
-    name:  { type: String },
+    name: { type: String },
     email: { type: String, sparse: true, index: true },
 
-    verified     : { type: Boolean, default: false },       // World ID
+    verified: { type: Boolean, default: false },       // World ID
     walletAddress: { type: String, unique: true, sparse: true },
-    telegramId     : { type: String, unique: true, sparse: true },
+    telegramId: { type: String, unique: true, sparse: true },
 
     username: {
-      type   : String,
+      type: String,
       default: function () {
         // Ensure `this` is defined and walletAddress is available
         if (this && this.walletAddress) {
@@ -55,23 +55,23 @@ const UserSchema = new mongoose.Schema(
         return undefined;
       }
     },
-    
+
 
     /* ------- Vérif sociales on-chain ----------------------------- */
     socialVerifications: {
-      type   : Map,
-      of     : SocialVerificationSchema,
+      type: Map,
+      of: SocialVerificationSchema,
       default: {},
     },
 
     authMethod: {
-      type   : String,
-      enum   : ['email','twitter','google','facebook','instagram','tiktok','discord'],
+      type: String,
+      enum: ['email', 'twitter', 'google', 'facebook', 'instagram', 'tiktok', 'discord'],
       default: 'twitter',
     },
     verificationLevel: {
-      type   : String,
-      enum   : ['orb','device','phone'],
+      type: String,
+      enum: ['orb', 'device', 'phone'],
       default: 'device',
     },
     temporary: { type: Boolean, default: false },
@@ -153,27 +153,27 @@ const UserSchema = new mongoose.Schema(
       }
       // Vous pourrez ajouter d'autres réseaux sociaux ici plus tard
     },
-    
+
 
     /* ------- Daily login ----------------------------------------- */
     dailyLogin: {
-      currentStreak   : { type: Number, default: 0 },
-      maxStreak       : { type: Number, default: 0 },
-      lastLogin       : { type: Date },
-      firstLoginOfDay : { type: Date },
+      currentStreak: { type: Number, default: 0 },
+      maxStreak: { type: Number, default: 0 },
+      lastLogin: { type: Date },
+      firstLoginOfDay: { type: Date },
     },
 
     /* ------- Parrainage & amis ----------------------------------- */
     referralCode: {
-      type   : String,
-      unique : true,
-      index  : true,
+      type: String,
+      unique: true,
+      index: true,
       default: () => crypto.randomBytes(6).toString('hex'),
     },
-    referrer:           { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    referrer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     friendRequestsSent: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    friendRequestsReceived:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    friends:            [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    friendRequestsReceived: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
     /* ------- Tokens ---------------------------------------------- */
     tokenBalance: { type: Number, default: 0, min: 0 },
@@ -183,8 +183,14 @@ const UserSchema = new mongoose.Schema(
       lastClaimDate: { type: Date, default: null }
     },
 
+    /* ------- PRISM 5-Star Review Challenge ----------------------- */
+    prismReviewChallenge: {
+      participated: { type: Boolean, default: false },
+      participatedAt: { type: Date, default: null }
+    },
+
     /* ====== 🆕 Airdrop pending & historique ====================== */
-    claimPending : { type: ClaimPendingSchema, default: null },
+    claimPending: { type: ClaimPendingSchema, default: null },
     claimsHistory: { type: [ClaimHistorySchema], default: [] },
 
     /* ====== 🆕 Auto distribution history ========================= */
@@ -195,16 +201,16 @@ const UserSchema = new mongoose.Schema(
     }],
 
     notifications: {
-        enabled   : { type: Boolean, default: false },  // vrai si l'utilisateur a accepté
-        grantedAt : { type: Date,    default: null }    // date d'acceptation
-        },
+      enabled: { type: Boolean, default: false },  // vrai si l'utilisateur a accepté
+      grantedAt: { type: Date, default: null }    // date d'acceptation
+    },
 
     score: {
-          type: Number,
-          min: 0,
-          max: 100,
-          default: 0
-        },    
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0
+    },
 
     /* ------- Meta ------------------------------------------------ */
     createdAt: { type: Date, default: Date.now },
@@ -218,31 +224,31 @@ function normalize(value, min, max) {
 
 const WEIGHTS = {
   verification: 0.20,
-  socialLinks:  0.10,
-  loginStreak:  0.15,
-  friendship:   0.20,
+  socialLinks: 0.10,
+  loginStreak: 0.15,
+  friendship: 0.20,
   tokenBalance: 0.10,
-  claims:       0.10,
-  referral:     0.10,
-  notifications:0.05
+  claims: 0.10,
+  referral: 0.10,
+  notifications: 0.05
 };
 
 function calculateUserScore(user) {
   // 1. Vérification World ID
-  const isVerified   = user.verified ? 1 : 0;
-  const levelScore   = { orb: 0.3, device: 0.6, phone: 1 }[user.verificationLevel] || 0;
-  const verifScore   = (isVerified * 0.5 + levelScore * 0.5);
+  const isVerified = user.verified ? 1 : 0;
+  const levelScore = { orb: 0.3, device: 0.6, phone: 1 }[user.verificationLevel] || 0;
+  const verifScore = (isVerified * 0.5 + levelScore * 0.5);
 
   // 2. Réseaux sociaux connectés
   const socialLinksCount = Object.values(user.social || {}).filter(s => s?.id).length;
-  const socialScore      = normalize(socialLinksCount, 0, 5);
+  const socialScore = normalize(socialLinksCount, 0, 5);
 
   // 3. Streak de connexion
   const streakScore = normalize(user.dailyLogin?.currentStreak || 0, 0, 30);
 
   // 4. Amis & invitations
-  const friendsScore   = normalize(user.friends.length, 0, 1000);
-  const requestsScore  = normalize(
+  const friendsScore = normalize(user.friends.length, 0, 1000);
+  const requestsScore = normalize(
     (user.friendRequestsSent.length + user.friendRequestsReceived.length),
     0, 200
   );
@@ -252,24 +258,24 @@ function calculateUserScore(user) {
   const balanceScore = normalize(user.tokenBalance || 0, 0, 10000);
 
   // 6. Historique de claims
-  const claimsScore  = normalize(user.claimsHistory.length, 0, 50);
+  const claimsScore = normalize(user.claimsHistory.length, 0, 50);
 
   // 7. Parrainage
   const referralScore = user.referrer ? 1 : 0;
 
   // 8. Notifications
-  const notifScore    = user.notifications?.enabled ? 1 : 0;
+  const notifScore = user.notifications?.enabled ? 1 : 0;
 
   // Pondération & somme
   const raw =
-    WEIGHTS.verification   * verifScore +
-    WEIGHTS.socialLinks    * socialScore +
-    WEIGHTS.loginStreak    * streakScore +
-    WEIGHTS.friendship     * friendshipScore +
-    WEIGHTS.tokenBalance   * balanceScore +
-    WEIGHTS.claims         * claimsScore +
-    WEIGHTS.referral       * referralScore +
-    WEIGHTS.notifications  * notifScore;
+    WEIGHTS.verification * verifScore +
+    WEIGHTS.socialLinks * socialScore +
+    WEIGHTS.loginStreak * streakScore +
+    WEIGHTS.friendship * friendshipScore +
+    WEIGHTS.tokenBalance * balanceScore +
+    WEIGHTS.claims * claimsScore +
+    WEIGHTS.referral * referralScore +
+    WEIGHTS.notifications * notifScore;
 
   // Retour sur 0–100
   return Math.round(raw * 100);
@@ -278,13 +284,13 @@ function calculateUserScore(user) {
 // ————————————————————————————————————————————————
 // Hook pour mettre à jour le score avant chaque save()
 // ————————————————————————————————————————————————
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', function (next) {
   this.score = calculateUserScore(this);
   next();
 });
 
 // Méthode d'instance si besoin d'accès directe
-UserSchema.methods.getScore = function() {
+UserSchema.methods.getScore = function () {
   return calculateUserScore(this);
 };
 
