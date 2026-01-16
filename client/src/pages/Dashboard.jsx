@@ -370,14 +370,14 @@ const Dashboard = () => {
           font-size: 0.9rem;
         }
         
-        /* PRISM Daily Reward Card */
+        /* PRISM Daily Reward Card - Minimalist */
         .prism-reward-card {
           width: 100%;
-          background: linear-gradient(135deg, rgba(242, 128, 17, 0.15) 0%, rgba(242, 128, 17, 0.05) 100%);
-          border: 1px solid rgba(242, 128, 17, 0.3);
-          border-radius: 12px;
-          padding: 1rem;
-          margin-top: 1rem;
+          background: rgba(48, 52, 33, 0.04);
+          border: 1px solid rgba(48, 52, 33, 0.1);
+          border-radius: 10px;
+          padding: 0.875rem;
+          margin-top: 0.75rem;
         }
         
         .prism-reward-content {
@@ -387,14 +387,14 @@ const Dashboard = () => {
         }
         
         .prism-reward-icon {
-          width: 48px;
-          height: 48px;
-          background: linear-gradient(135deg, #f28011, #f16403);
-          border-radius: 12px;
+          width: 40px;
+          height: 40px;
+          background: rgba(242, 128, 17, 0.1);
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
+          color: #f28011;
           flex-shrink: 0;
         }
         
@@ -405,25 +405,25 @@ const Dashboard = () => {
         
         .prism-reward-text h4 {
           margin: 0;
-          font-size: 0.95rem;
+          font-size: 0.9rem;
           font-weight: 600;
           color: var(--text-color, #303421);
         }
         
         .prism-reward-text p {
-          margin: 0.25rem 0 0;
-          font-size: 0.75rem;
-          color: var(--text-color-muted, rgba(48, 52, 33, 0.7));
+          margin: 0.2rem 0 0;
+          font-size: 0.72rem;
+          color: var(--text-color-muted, rgba(48, 52, 33, 0.6));
           line-height: 1.3;
         }
         
         .prism-claim-btn {
-          padding: 0.5rem 1rem;
-          background: linear-gradient(135deg, #f28011, #f16403);
-          color: white;
-          border: none;
+          padding: 0.45rem 0.9rem;
+          background: rgba(242, 128, 17, 0.1);
+          color: #f28011;
+          border: 1px solid rgba(242, 128, 17, 0.2);
           border-radius: 8px;
-          font-size: 0.8rem;
+          font-size: 0.78rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
@@ -432,24 +432,24 @@ const Dashboard = () => {
         }
         
         .prism-claim-btn:hover:not(.disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(242, 128, 17, 0.3);
+          background: rgba(242, 128, 17, 0.15);
         }
         
         .prism-claim-btn.disabled {
-          background: rgba(48, 52, 33, 0.2);
-          color: rgba(48, 52, 33, 0.6);
+          background: rgba(48, 52, 33, 0.05);
+          color: rgba(48, 52, 33, 0.4);
+          border-color: rgba(48, 52, 33, 0.1);
           cursor: not-allowed;
         }
         
-        /* 1111 WLD Giveaway Card */
+        /* 1111 WLD Giveaway Card - Minimalist */
         .giveaway-card {
           width: 100%;
-          background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          border-radius: 12px;
-          padding: 1rem;
-          margin-top: 1rem;
+          background: rgba(48, 52, 33, 0.04);
+          border: 1px solid rgba(48, 52, 33, 0.1);
+          border-radius: 10px;
+          padding: 0.875rem;
+          margin-top: 0.75rem;
         }
         
         .giveaway-content {
@@ -459,14 +459,14 @@ const Dashboard = () => {
         }
         
         .giveaway-icon {
-          width: 48px;
-          height: 48px;
-          background: linear-gradient(135deg, #6366f1, #a855f7);
-          border-radius: 12px;
+          width: 40px;
+          height: 40px;
+          background: rgba(99, 102, 241, 0.1);
+          border-radius: 10px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.5rem;
+          font-size: 1.2rem;
           flex-shrink: 0;
         }
         
@@ -477,25 +477,25 @@ const Dashboard = () => {
         
         .giveaway-text h4 {
           margin: 0;
-          font-size: 0.95rem;
+          font-size: 0.9rem;
           font-weight: 600;
           color: var(--text-color, #303421);
         }
         
         .giveaway-text p {
-          margin: 0.25rem 0 0;
-          font-size: 0.75rem;
-          color: var(--text-color-muted, rgba(48, 52, 33, 0.7));
+          margin: 0.2rem 0 0;
+          font-size: 0.72rem;
+          color: var(--text-color-muted, rgba(48, 52, 33, 0.6));
           line-height: 1.3;
         }
         
         .giveaway-btn {
-          padding: 0.5rem 1rem;
-          background: linear-gradient(135deg, #6366f1, #a855f7);
-          color: white;
-          border: none;
+          padding: 0.45rem 0.9rem;
+          background: rgba(99, 102, 241, 0.1);
+          color: #6366f1;
+          border: 1px solid rgba(99, 102, 241, 0.2);
           border-radius: 8px;
-          font-size: 0.8rem;
+          font-size: 0.78rem;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.2s;
@@ -504,8 +504,7 @@ const Dashboard = () => {
         }
         
         .giveaway-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+          background: rgba(99, 102, 241, 0.15);
         }
         
         @media (max-width: 480px) {
