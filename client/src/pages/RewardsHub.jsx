@@ -923,7 +923,7 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
+        {/* PRISM 5-Star Review Challenge - Compact Version at Top - TEMPORARILY HIDDEN
         <div className="prism-review-challenge-compact">
           <div className="challenge-compact-content">
             <div className="challenge-compact-left">
@@ -976,6 +976,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+        */}
 
         {/* STREAK CONTAINER */}
         <div className="streak-container">
@@ -1093,7 +1094,7 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
+        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge - TEMPORARILY HIDDEN
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
@@ -1187,6 +1188,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+        */}
       </div>
 
       {/* Notification */}
