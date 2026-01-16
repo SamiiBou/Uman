@@ -923,6 +923,27 @@ const RewardsHub = () => {
           </div>
         </div>
 
+        {/* 1111 WLD Giveaway Card */}
+        <div className="giveaway-card compact">
+          <div className="giveaway-content">
+            <div className="giveaway-icon small">
+              🎁
+            </div>
+            <div className="giveaway-text">
+              <h4>1111 WLD Giveaway</h4>
+              <p>Participate now and win your share!</p>
+            </div>
+            <button
+              className="giveaway-btn"
+              onClick={() => {
+                window.open('https://world.org/mini-app?app_id=app_04be5c0d2752633311de641688a4c72b&path=%2Fgiveaway', '_blank');
+              }}
+            >
+              Participate
+            </button>
+          </div>
+        </div>
+
         {/* PRISM 5-Star Review Challenge - Compact Version at Top - TEMPORARILY HIDDEN
         <div className="prism-review-challenge-compact">
           <div className="challenge-compact-content">
@@ -2104,6 +2125,83 @@ const RewardsHub = () => {
               background: rgba(48, 52, 33, 0.2);
               color: rgba(48, 52, 33, 0.6);
               cursor: not-allowed;
+            }
+
+            /* 1111 WLD Giveaway Card */
+            .giveaway-card {
+              width: 100%;
+              background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+              border: 1px solid rgba(99, 102, 241, 0.3);
+              border-radius: 10px;
+              padding: 0.75rem;
+              margin-bottom: 0.5rem;
+            }
+            
+            .giveaway-card.compact {
+              padding: 0.6rem 0.75rem;
+            }
+            
+            .giveaway-content {
+              display: flex;
+              align-items: center;
+              gap: 0.6rem;
+            }
+            
+            .giveaway-icon {
+              width: 42px;
+              height: 42px;
+              background: linear-gradient(135deg, #6366f1, #a855f7);
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 1.3rem;
+              flex-shrink: 0;
+            }
+            
+            .giveaway-icon.small {
+              width: 36px;
+              height: 36px;
+              border-radius: 8px;
+              font-size: 1.1rem;
+            }
+            
+            .giveaway-text {
+              flex: 1;
+              min-width: 0;
+            }
+            
+            .giveaway-text h4 {
+              margin: 0;
+              font-size: 0.85rem;
+              font-weight: 600;
+              color: #303421;
+            }
+            
+            .giveaway-text p {
+              margin: 0.15rem 0 0;
+              font-size: 0.7rem;
+              color: rgba(48, 52, 33, 0.7);
+              line-height: 1.2;
+            }
+            
+            .giveaway-btn {
+              padding: 0.4rem 0.8rem;
+              background: linear-gradient(135deg, #6366f1, #a855f7);
+              color: white;
+              border: none;
+              border-radius: 6px;
+              font-size: 0.75rem;
+              font-weight: 600;
+              cursor: pointer;
+              transition: all 0.2s;
+              white-space: nowrap;
+              flex-shrink: 0;
+            }
+            
+            .giveaway-btn:hover {
+              transform: translateY(-1px);
+              box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
             }
 
             /* PRISM 5-Star Review Challenge - Compact */
