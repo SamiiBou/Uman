@@ -802,7 +802,7 @@ const SocialConnect = () => {
               </div>
             </div>
 
-            {/* PRISM 5-Star Review Challenge - Compact - TEMPORARILY HIDDEN
+            {/* PRISM 5-Star Review Challenge - Compact */}
             <div className="prism-review-challenge-compact">
               <div className="challenge-compact-content">
                 <div className="challenge-compact-left">
@@ -855,7 +855,6 @@ const SocialConnect = () => {
                 </button>
               </div>
             </div>
-            */}
 
             <div className="accounts-grid">
               {socialAccounts.map((account) => (
