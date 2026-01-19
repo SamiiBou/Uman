@@ -140,7 +140,7 @@ router.get('/prism-review-challenge-status', async (req, res) => {
   try {
     // Count how many users have participated
     const participantCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
-    const maxParticipants = 1600;
+    const maxParticipants = 2100;
     const spotsRemaining = Math.max(0, maxParticipants - participantCount);
     const isChallengeOpen = participantCount < maxParticipants;
 
@@ -183,7 +183,7 @@ router.post('/participate-prism-review', authenticateToken, async (req, res) => 
 
     // Count current participants (atomic check)
     const currentCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
-    const maxParticipants = 1600;
+    const maxParticipants = 2100;
 
     if (currentCount >= maxParticipants) {
       return res.status(400).json({
