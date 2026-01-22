@@ -923,26 +923,7 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* 1111 WLD Giveaway Card */}
-        <div className="giveaway-card compact">
-          <div className="giveaway-content">
-            <div className="giveaway-icon small">
-              🎁
-            </div>
-            <div className="giveaway-text">
-              <h4>1111 WLD Giveaway</h4>
-              <p>Participate now and win your share!</p>
-            </div>
-            <button
-              className="giveaway-btn"
-              onClick={() => {
-                window.open('https://world.org/mini-app?app_id=app_04be5c0d2752633311de641688a4c72b&path=%2Fgiveaway', '_blank');
-              }}
-            >
-              Participate
-            </button>
-          </div>
-        </div>
+
 
         {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
         <div className="prism-review-challenge-compact">
@@ -1126,7 +1107,7 @@ const RewardsHub = () => {
                 <Award size={24} />
               </div>
               <div className="challenge-badge limited">
-                <span>Limited to 2100 first users!</span>
+                <span>Limited to 3000 first users!</span>
               </div>
             </div>
 
@@ -1140,11 +1121,11 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / 2100) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / 3000) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
-                  {reviewChallengeStatus.participantCount}/2100 participants
+                  {reviewChallengeStatus.participantCount}/3000 participants
                 </span>
               </div>
             </div>
