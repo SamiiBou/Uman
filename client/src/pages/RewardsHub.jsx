@@ -1107,7 +1107,7 @@ const RewardsHub = () => {
                 <Award size={24} />
               </div>
               <div className="challenge-badge limited">
-                <span>Limited to 3000 first users!</span>
+                <span>Limited to 4000 first users!</span>
               </div>
             </div>
 
@@ -1121,11 +1121,11 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / 3000) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / 4000) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
-                  {reviewChallengeStatus.participantCount}/3000 participants
+                  {reviewChallengeStatus.participantCount}/4000 participants
                 </span>
               </div>
             </div>
