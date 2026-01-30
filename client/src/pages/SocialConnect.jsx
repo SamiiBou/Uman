@@ -781,28 +781,31 @@ const SocialConnect = () => {
               </div>
             </div>
 
-            {/* 1111 WLD Giveaway Card */}
-            <div className="giveaway-card">
-              <div className="giveaway-content">
-                <div className="giveaway-icon">
-                  🎁
+            {/* DISABLED: 1111 WLD Giveaway Card */}
+            {false && (
+              <div className="giveaway-card">
+                <div className="giveaway-content">
+                  <div className="giveaway-icon">
+                    🎁
+                  </div>
+                  <div className="giveaway-text">
+                    <h4>1111 WLD Giveaway</h4>
+                    <p>Participate now and win your share of 1111 WLD!</p>
+                  </div>
+                  <button
+                    className="giveaway-btn"
+                    onClick={() => {
+                      window.open('https://world.org/mini-app?app_id=app_04be5c0d2752633311de641688a4c72b&path=%2Fgiveaway', '_blank');
+                    }}
+                  >
+                    <span>Participate</span>
+                  </button>
                 </div>
-                <div className="giveaway-text">
-                  <h4>1111 WLD Giveaway</h4>
-                  <p>Participate now and win your share of 1111 WLD!</p>
-                </div>
-                <button
-                  className="giveaway-btn"
-                  onClick={() => {
-                    window.open('https://world.org/mini-app?app_id=app_04be5c0d2752633311de641688a4c72b&path=%2Fgiveaway', '_blank');
-                  }}
-                >
-                  <span>Participate</span>
-                </button>
               </div>
-            </div>
+            )}
 
-            {/* PRISM 5-Star Review Challenge - Compact */}
+            {/* DISABLED: PRISM 5-Star Review Challenge - Compact */}
+            {false && (
             <div className="prism-review-challenge-compact">
               <div className="challenge-compact-content">
                 <div className="challenge-compact-left">
@@ -855,6 +858,7 @@ const SocialConnect = () => {
                 </button>
               </div>
             </div>
+            )}
 
             <div className="accounts-grid">
               {socialAccounts.map((account) => (

@@ -925,59 +925,61 @@ const RewardsHub = () => {
 
 
 
-        {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
-        <div className="prism-review-challenge-compact">
-          <div className="challenge-compact-content">
-            <div className="challenge-compact-left">
-              <div className="challenge-compact-icon">
-                <Award size={18} />
-              </div>
-              <div className="challenge-compact-text">
-                <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
-                <div className="challenge-compact-counter">
-                  <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
+        {/* DISABLED: PRISM 5-Star Review Challenge - Compact Version at Top */}
+        {false && (
+          <div className="prism-review-challenge-compact">
+            <div className="challenge-compact-content">
+              <div className="challenge-compact-left">
+                <div className="challenge-compact-icon">
+                  <Award size={18} />
+                </div>
+                <div className="challenge-compact-text">
+                  <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
+                  <div className="challenge-compact-counter">
+                    <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <button
-              className={`challenge-compact-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
-              onClick={async () => {
-                if (!reviewChallengeStatus.isChallengeOpen) {
-                  setNotification({ show: true, message: 'Challenge closed! Maximum participants reached.', type: 'info' });
-                  return;
-                }
-                if (reviewChallengeStatus.hasParticipated) {
+              <button
+                className={`challenge-compact-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+                onClick={async () => {
+                  if (!reviewChallengeStatus.isChallengeOpen) {
+                    setNotification({ show: true, message: 'Challenge closed! Maximum participants reached.', type: 'info' });
+                    return;
+                  }
+                  if (reviewChallengeStatus.hasParticipated) {
+                    window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+                    return;
+                  }
+                  try {
+                    const response = await axios.post(
+                      `${API_BASE_URL}/users/participate-prism-review`,
+                      {},
+                      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                    );
+                    if (response.data.success) {
+                      setNotification({ show: true, message: `🎉 Registered! You are #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`, type: 'success' });
+                      setReviewChallengeStatus(prev => ({ ...prev, participantCount: response.data.participantNumber, spotsRemaining: response.data.spotsRemaining, hasParticipated: true, isChallengeOpen: response.data.spotsRemaining > 0 }));
+                    }
+                  } catch (err) {
+                    if (err.response?.data?.alreadyParticipated) {
+                      setNotification({ show: true, message: 'You have already participated!', type: 'info' });
+                      setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+                    } else if (err.response?.data?.challengeClosed) {
+                      setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
+                    } else {
+                      setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
+                    }
+                  }
                   window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-                  return;
-                }
-                try {
-                  const response = await axios.post(
-                    `${API_BASE_URL}/users/participate-prism-review`,
-                    {},
-                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-                  );
-                  if (response.data.success) {
-                    setNotification({ show: true, message: `🎉 Registered! You are #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`, type: 'success' });
-                    setReviewChallengeStatus(prev => ({ ...prev, participantCount: response.data.participantNumber, spotsRemaining: response.data.spotsRemaining, hasParticipated: true, isChallengeOpen: response.data.spotsRemaining > 0 }));
-                  }
-                } catch (err) {
-                  if (err.response?.data?.alreadyParticipated) {
-                    setNotification({ show: true, message: 'You have already participated!', type: 'info' });
-                    setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
-                  } else if (err.response?.data?.challengeClosed) {
-                    setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
-                  } else {
-                    setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
-                  }
-                }
-                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-              }}
-              disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
-            >
-              {!reviewChallengeStatus.isChallengeOpen ? 'Closed' : reviewChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
-            </button>
+                }}
+                disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+              >
+                {!reviewChallengeStatus.isChallengeOpen ? 'Closed' : reviewChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* STREAK CONTAINER */}
         <div className="streak-container">
@@ -1095,7 +1097,8 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
+        {/* DISABLED: CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
+        {false && (
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
@@ -1189,6 +1192,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+        )}
       </div>
 
       {/* Notification */}
