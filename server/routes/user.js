@@ -188,7 +188,7 @@ router.post('/participate-prism-review', authenticateToken, async (req, res) => 
     if (currentCount >= maxParticipants) {
       return res.status(400).json({
         success: false,
-        message: 'Challenge is closed! Maximum participants reached (100/100)',
+        message: `Challenge is closed! Maximum participants reached (${maxParticipants}/${maxParticipants})`,
         challengeClosed: true
       });
     }
@@ -204,7 +204,7 @@ router.post('/participate-prism-review', authenticateToken, async (req, res) => 
     // Get updated count
     const newCount = await User.countDocuments({ 'prismReviewChallenge.participated': true });
 
-    console.log(`[PRISM Review Challenge] User ${userId} participated. Total: ${newCount}/100`);
+    console.log(`[PRISM Review Challenge] User ${userId} participated. Total: ${newCount}/${maxParticipants}`);
 
     return res.json({
       success: true,
