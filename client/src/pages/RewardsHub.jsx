@@ -66,8 +66,8 @@ const RewardsHub = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 100,
-    spotsRemaining: 100,
+    maxParticipants: 5000,
+    spotsRemaining: 5000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -925,9 +925,8 @@ const RewardsHub = () => {
 
 
 
-        {/* DISABLED: PRISM 5-Star Review Challenge - Compact Version at Top */}
-        {false && (
-          <div className="prism-review-challenge-compact">
+        {/* PRISM 5-Star Review Challenge - Compact Version at Top */}
+        <div className="prism-review-challenge-compact">
             <div className="challenge-compact-content">
               <div className="challenge-compact-left">
                 <div className="challenge-compact-icon">
@@ -935,9 +934,11 @@ const RewardsHub = () => {
                 </div>
                 <div className="challenge-compact-text">
                   <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
-                  <div className="challenge-compact-counter">
-                    <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
-                  </div>
+                <div className="challenge-compact-counter">
+                  <span>
+                    {reviewChallengeStatus.participantCount}/{reviewChallengeStatus.maxParticipants} participants
+                  </span>
+                </div>
                 </div>
               </div>
               <button
@@ -979,7 +980,7 @@ const RewardsHub = () => {
               </button>
             </div>
           </div>
-        )}
+        </div>
 
         {/* STREAK CONTAINER */}
         <div className="streak-container">
@@ -1097,8 +1098,7 @@ const RewardsHub = () => {
           </div>
         </div>
 
-        {/* DISABLED: CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
-        {false && (
+        {/* CHALLENGES SECTION - PRISM 5-Star Review Challenge */}
         <div className="challenges-section">
           <div className="section-header">
             <h3>Daily Challenges</h3>
@@ -1124,11 +1124,11 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / 5000) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 5000)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
-                  {reviewChallengeStatus.participantCount}/5000 participants
+                  {reviewChallengeStatus.participantCount}/{reviewChallengeStatus.maxParticipants} participants
                 </span>
               </div>
             </div>
@@ -1192,7 +1192,6 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
-        )}
       </div>
 
       {/* Notification */}

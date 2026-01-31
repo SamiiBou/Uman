@@ -53,8 +53,8 @@ const SocialConnect = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 100,
-    spotsRemaining: 100,
+    maxParticipants: 5000,
+    spotsRemaining: 5000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -804,8 +804,7 @@ const SocialConnect = () => {
               </div>
             )}
 
-            {/* DISABLED: PRISM 5-Star Review Challenge - Compact */}
-            {false && (
+            {/* PRISM 5-Star Review Challenge - Compact */}
             <div className="prism-review-challenge-compact">
               <div className="challenge-compact-content">
                 <div className="challenge-compact-left">
@@ -815,7 +814,9 @@ const SocialConnect = () => {
                   <div className="challenge-compact-text">
                     <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
                     <div className="challenge-compact-counter">
-                      <span>{reviewChallengeStatus.spotsRemaining} spots left</span>
+                      <span>
+                        {reviewChallengeStatus.participantCount}/{reviewChallengeStatus.maxParticipants} participants
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -858,7 +859,6 @@ const SocialConnect = () => {
                 </button>
               </div>
             </div>
-            )}
 
             <div className="accounts-grid">
               {socialAccounts.map((account) => (
