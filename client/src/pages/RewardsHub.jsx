@@ -1190,6 +1190,7 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
+      </div>
 
       {/* Notification */}
       {notification.show && (
