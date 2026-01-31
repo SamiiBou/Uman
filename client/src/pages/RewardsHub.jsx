@@ -980,8 +980,6 @@ const RewardsHub = () => {
               </button>
             </div>
           </div>
-        </div>
-
         {/* STREAK CONTAINER */}
         <div className="streak-container">
           <div className="streak-card">
@@ -1192,7 +1190,6 @@ const RewardsHub = () => {
             </button>
           </div>
         </div>
-      </div>
 
       {/* Notification */}
       {notification.show && (
