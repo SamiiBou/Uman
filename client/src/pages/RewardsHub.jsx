@@ -66,8 +66,8 @@ const RewardsHub = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 5000,
-    spotsRemaining: 5000,
+    maxParticipants: 6000,
+    spotsRemaining: 6000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -1108,7 +1108,7 @@ const RewardsHub = () => {
                 <Award size={24} />
               </div>
               <div className="challenge-badge limited">
-                <span>Limited to 5000 first users!</span>
+                <span>Limited to 6000 first users!</span>
               </div>
             </div>
 
@@ -1122,7 +1122,7 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 5000)) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 6000)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
