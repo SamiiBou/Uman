@@ -19,6 +19,7 @@ const AdSense = ({
   const [adLoaded, setAdLoaded] = useState(false);
 
   const isProduction = import.meta.env.MODE === 'production';
+  const showDevPlaceholder = import.meta.env.VITE_SHOW_AD_PLACEHOLDER === 'true';
 
   useEffect(() => {
     // Ne charger les pubs que en production
@@ -53,8 +54,14 @@ const AdSense = ({
     return () => clearTimeout(timer);
   }, [adLoaded, isProduction]);
 
-  // En mode développement, afficher un placeholder visible
-  if (!isProduction) {
+  // En développement, masquer les blocs pub par défaut pour éviter les placeholders visuels.
+  // Pour réactiver le placeholder, définir VITE_SHOW_AD_PLACEHOLDER=true.
+  if (!isProduction && !showDevPlaceholder) {
+    return null;
+  }
+
+  // Placeholder optionnel en développement
+  if (!isProduction && showDevPlaceholder) {
     return (
       <div 
         className={className} 

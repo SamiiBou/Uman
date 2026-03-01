@@ -1,21 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   FaSearch,
   FaCheckCircle,
-  FaTrophy,
-  FaUser,
   FaDashcube
 } from 'react-icons/fa';
 
 const BottomNavbar = () => {
   const location = useLocation();
-  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
     // Detect iOS device
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    setIsIOS(iOS);
     // Add viewport meta tag for iOS devices if it doesn't exist
     if (iOS) {
       let viewportMeta = document.querySelector('meta[name="viewport"]');
@@ -76,12 +72,12 @@ const BottomNavbar = () => {
             bottom: 0;
             left: 0;
             width: 100%;
-            height: ${isIOS ? 'calc(60px + 10px)' : '60px'}; /* Hauteur réduite pour iOS */
+            height: calc(60px + env(safe-area-inset-bottom, 0px));
             display: flex;
             background-color: #f4e9b7;
             border-top: 1px solid rgba(241, 100, 3, 0.1);
             z-index: 999;
-            padding-bottom: 0;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
           }
           .nav-container {
             width: 100%;
@@ -123,11 +119,6 @@ const BottomNavbar = () => {
           }
         `}</style>
       </nav>
-      {/* Spacer pour éviter que le contenu ne soit caché sous la navbar */}
-      <div style={{
-        height: isIOS ? '65px' : '60px',
-        width: '100%'
-      }} />
     </>
   );
 };
