@@ -66,8 +66,8 @@ const RewardsHub = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 6000,
-    spotsRemaining: 6000,
+    maxParticipants: 7000,
+    spotsRemaining: 7000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -967,7 +967,7 @@ const RewardsHub = () => {
                       setNotification({ show: true, message: 'You have already participated!', type: 'info' });
                       setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
                     } else if (err.response?.data?.challengeClosed) {
-                      setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
+                      setNotification({ show: true, message: `Challenge closed! ${reviewChallengeStatus.maxParticipants} spots filled.`, type: 'info' });
                     } else {
                       setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
                     }
@@ -1108,7 +1108,7 @@ const RewardsHub = () => {
                 <Award size={24} />
               </div>
               <div className="challenge-badge limited">
-                <span>Limited to 6000 first users!</span>
+                <span>Limited to {reviewChallengeStatus.maxParticipants} first users!</span>
               </div>
             </div>
 
@@ -1122,7 +1122,7 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 6000)) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 7000)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
@@ -1170,7 +1170,7 @@ const RewardsHub = () => {
                     setNotification({ show: true, message: 'You have already participated!', type: 'info' });
                     setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
                   } else if (err.response?.data?.challengeClosed) {
-                    setNotification({ show: true, message: 'Challenge closed! 100 spots filled.', type: 'info' });
+                    setNotification({ show: true, message: `Challenge closed! ${reviewChallengeStatus.maxParticipants} spots filled.`, type: 'info' });
                   } else {
                     setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
                   }

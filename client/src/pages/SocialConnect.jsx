@@ -53,8 +53,8 @@ const SocialConnect = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 6000,
-    spotsRemaining: 6000,
+    maxParticipants: 7000,
+    spotsRemaining: 7000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
