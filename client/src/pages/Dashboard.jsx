@@ -4,6 +4,7 @@ import { FaCheck, FaInfoCircle, FaShieldAlt, FaLink, FaUnlink } from 'react-icon
 import { Coins } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+const PRISM_APP_URL = 'https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7';
 
 const Dashboard = () => {
   const { user, isLoading } = useAuth();
@@ -19,29 +20,62 @@ const Dashboard = () => {
     loading: false
   });
 
-  // Get token from localStorage
-  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+  const getAuthToken = () =>
+    localStorage.getItem('auth_token') || localStorage.getItem('token');
+  const token = getAuthToken();
+
+  const refreshPrismRewardStatus = async (authToken = getAuthToken()) => {
+    if (!authToken) return;
+
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (data.success) {
+        setPrismRewardStatus({
+          canClaim: data.canClaim,
+          hoursLeft: data.hoursLeft || 0,
+          minutesLeft: data.minutesLeft || 0,
+          loading: false
+        });
+      } else {
+        setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error("Error fetching PRISM reward status:", err);
+      setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
 
   // Fetch PRISM reward status on mount
   useEffect(() => {
     if (token) {
-      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(({ data }) => {
-          if (data.success) {
-            setPrismRewardStatus({
-              canClaim: data.canClaim,
-              hoursLeft: data.hoursLeft || 0,
-              minutesLeft: data.minutesLeft || 0,
-              loading: false
-            });
-          }
-        })
-        .catch(err => {
-          console.error("Error fetching PRISM reward status:", err);
-        });
+      refreshPrismRewardStatus(token);
     }
+  }, [token]);
+
+  // Sync status when returning to the app (after opening PRISM)
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPrismRewardStatus();
+      }
+    };
+
+    const handleFocus = () => {
+      refreshPrismRewardStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    document.addEventListener('visibilitychange', handleVisible);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisible);
+    };
   }, [token]);
 
   if (isLoading) {
@@ -107,21 +141,31 @@ const Dashboard = () => {
             onClick={async () => {
               if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
 
+              const authToken = getAuthToken();
+              if (!authToken) {
+                setNotificationMessage('Please reconnect your wallet session.');
+                setNotificationType('error');
+                setShowNotification(true);
+                setTimeout(() => setShowNotification(false), 3000);
+                return;
+              }
+
               // Set loading immediately to prevent double clicks
               setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
 
-              // Open PRISM app
-              window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-
               // Claim reward
               try {
-                console.log('[PRISM] Claiming reward with token:', token ? 'Present' : 'Missing');
-                const response = await axios.post(
+                console.log('[PRISM] Claiming reward with token:', authToken ? 'Present' : 'Missing');
+                // Start claim before opening PRISM to avoid request suspension on background.
+                const claimPromise = axios.post(
                   `${API_BASE_URL}/users/claim-prism-reward`,
                   {},
-                  { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                  { headers: { Authorization: `Bearer ${authToken}` } }
                 );
 
+                window.open(PRISM_APP_URL, '_blank');
+
+                const response = await claimPromise;
                 console.log('[PRISM] API Response:', response.data);
 
                 if (response.data.success) {
@@ -129,18 +173,13 @@ const Dashboard = () => {
                   setNotificationType('success');
                   setShowNotification(true);
                   setTimeout(() => setShowNotification(false), 3000);
-                  setPrismRewardStatus({
-                    canClaim: false,
-                    hoursLeft: 23,
-                    minutesLeft: 59,
-                    loading: false
-                  });
+                  await refreshPrismRewardStatus(authToken);
                 } else {
                   setNotificationMessage(response.data.message || 'Reward claimed!');
                   setNotificationType('info');
                   setShowNotification(true);
                   setTimeout(() => setShowNotification(false), 3000);
-                  setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: false }));
+                  await refreshPrismRewardStatus(authToken);
                 }
               } catch (err) {
                 console.error('[PRISM] Error claiming reward:', err);

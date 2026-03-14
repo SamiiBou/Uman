@@ -39,7 +39,7 @@ const ERC20_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function decimals() view returns (uint8)"
 ];
-const PRISM_REVIEW_MAX_PARTICIPANTS = 7000;
+const PRISM_REVIEW_MAX_PARTICIPANTS = 9000;
 
 // Public routes (no authentication required)
 router.get('/search', searchUsers);

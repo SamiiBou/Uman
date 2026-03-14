@@ -24,6 +24,7 @@ import { API_BASE_URL, BACKEND_URL } from '../config';
 
 // Token contract details (copied from ConnectAccounts)
 const API_TIMEOUT = 15000;
+const PRISM_APP_URL = 'https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7';
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 
 const ERC20_ABI = [
@@ -66,8 +67,8 @@ const RewardsHub = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 7000,
-    spotsRemaining: 7000,
+    maxParticipants: 9000,
+    spotsRemaining: 9000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -292,6 +293,33 @@ const RewardsHub = () => {
     window.open('https://x.com/umantheapp', '_blank');
   };
 
+  const getAuthToken = () =>
+    token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+  const refreshPrismRewardStatus = async (authToken = getAuthToken()) => {
+    if (!authToken) return;
+
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (data.success) {
+        setPrismRewardStatus({
+          canClaim: data.canClaim,
+          hoursLeft: data.hoursLeft || 0,
+          minutesLeft: data.minutesLeft || 0,
+          loading: false
+        });
+      } else {
+        setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error('[PRISM] Error fetching status:', err);
+      setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   useEffect(() => {
     if (firstLoginOfDay && todaysReward !== null) {
       // Calculate how many seconds in a day the reward will be distributed over
@@ -460,21 +488,31 @@ const RewardsHub = () => {
   // Fetch PRISM reward status when token is available
   useEffect(() => {
     if (token) {
-      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(({ data }) => {
-          if (data.success) {
-            setPrismRewardStatus({
-              canClaim: data.canClaim,
-              hoursLeft: data.hoursLeft || 0,
-              minutesLeft: data.minutesLeft || 0,
-              loading: false
-            });
-          }
-        })
-        .catch(err => console.error('[PRISM] Error fetching status:', err));
+      refreshPrismRewardStatus(token);
     }
+  }, [token]);
+
+  // Keep PRISM reward status synced when the app comes back to foreground
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPrismRewardStatus();
+      }
+    };
+
+    const handleFocus = () => {
+      refreshPrismRewardStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    document.addEventListener('visibilitychange', handleVisible);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisible);
+    };
   }, [token]);
 
   // Fetch PRISM 5-Star Review Challenge status
@@ -889,20 +927,36 @@ const RewardsHub = () => {
               className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
               onClick={async () => {
                 if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
+
+                const authToken = getAuthToken();
+                if (!authToken) {
+                  setNotification({ show: true, message: 'Please reconnect your wallet session.', type: 'error' });
+                  return;
+                }
+
                 setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
-                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
+
                 try {
-                  const response = await axios.post(
+                  // Start the claim request before opening PRISM to avoid background cancellation on mobile.
+                  const claimPromise = axios.post(
                     `${API_BASE_URL}/users/claim-prism-reward`,
                     {},
-                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                    { headers: { Authorization: `Bearer ${authToken}` } }
                   );
+
+                  window.open(PRISM_APP_URL, '_blank');
+
+                  const response = await claimPromise;
                   if (response.data.success) {
                     setNotification({ show: true, message: `🎉 ${response.data.message}`, type: 'success' });
-                    setPrismRewardStatus({ canClaim: false, hoursLeft: 23, minutesLeft: 59, loading: false });
+                    const newBalance = Number(response.data.newBalance);
+                    if (Number.isFinite(newBalance)) {
+                      setUmiBalance(newBalance);
+                    }
+                    await refreshPrismRewardStatus(authToken);
                   } else {
                     setNotification({ show: true, message: response.data.message || 'Reward claimed!', type: 'info' });
-                    setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: false }));
+                    await refreshPrismRewardStatus(authToken);
                   }
                 } catch (err) {
                   const errData = err.response?.data;
@@ -1122,7 +1176,7 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 7000)) * 100}%` }}
+                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 9000)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">

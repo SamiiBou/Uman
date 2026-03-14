@@ -9,6 +9,7 @@ import card from './idCard.png';
 import { ethers, solidityPackedKeccak256 } from "ethers";
 import AdSenseAuto from '../components/AdSenseAuto';
 import { API_BASE_URL } from '../config';
+const PRISM_APP_URL = 'https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7';
 
 // Custom X logo component
 const FaX = () => (
@@ -53,8 +54,8 @@ const SocialConnect = () => {
   // PRISM 5-Star Review Challenge state
   const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 7000,
-    spotsRemaining: 7000,
+    maxParticipants: 9000,
+    spotsRemaining: 9000,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -186,6 +187,40 @@ const SocialConnect = () => {
   //   }
   // }, [connectedAccounts]);
 
+  const getAuthToken = () =>
+    token || localStorage.getItem('auth_token') || localStorage.getItem('token');
+
+  const refreshPrismRewardStatus = async (authToken = getAuthToken()) => {
+    if (!authToken) {
+      console.warn('[PRISM DEBUG] No token available - cannot check reward status');
+      return;
+    }
+
+    try {
+      console.log('[PRISM DEBUG] Fetching reward status...');
+      const { data } = await axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      console.log('[PRISM DEBUG] Status response:', data);
+      if (data.success) {
+        setPrismRewardStatus({
+          canClaim: data.canClaim,
+          hoursLeft: data.hoursLeft || 0,
+          minutesLeft: data.minutesLeft || 0,
+          loading: false
+        });
+        console.log('[PRISM DEBUG] canClaim:', data.canClaim);
+      } else {
+        setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error('[PRISM DEBUG] Error fetching status:', err);
+      console.error('[PRISM DEBUG] Error response:', err.response?.data);
+      setPrismRewardStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
   // Fetch PRISM reward status on mount
   useEffect(() => {
     console.log('[PRISM DEBUG] ====== PRISM Reward Status Check ======');
@@ -193,29 +228,31 @@ const SocialConnect = () => {
     console.log('[PRISM DEBUG] API_BASE_URL:', API_BASE_URL);
 
     if (token) {
-      console.log('[PRISM DEBUG] Fetching reward status...');
-      axios.get(`${API_BASE_URL}/users/prism-reward-status`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(({ data }) => {
-          console.log('[PRISM DEBUG] Status response:', data);
-          if (data.success) {
-            setPrismRewardStatus({
-              canClaim: data.canClaim,
-              hoursLeft: data.hoursLeft || 0,
-              minutesLeft: data.minutesLeft || 0,
-              loading: false
-            });
-            console.log('[PRISM DEBUG] canClaim:', data.canClaim);
-          }
-        })
-        .catch(err => {
-          console.error('[PRISM DEBUG] Error fetching status:', err);
-          console.error('[PRISM DEBUG] Error response:', err.response?.data);
-        });
-    } else {
-      console.warn('[PRISM DEBUG] No token available - cannot check reward status');
+      refreshPrismRewardStatus(token);
     }
+  }, [token]);
+
+  // Sync PRISM status when app becomes visible again
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPrismRewardStatus();
+      }
+    };
+
+    const handleFocus = () => {
+      refreshPrismRewardStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    document.addEventListener('visibilitychange', handleVisible);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisible);
+    };
   }, [token]);
 
   // Fetch PRISM 5-Star Review Challenge status
@@ -704,21 +741,32 @@ const SocialConnect = () => {
                   onClick={async () => {
                     if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
 
+                    const authToken = getAuthToken();
+                    if (!authToken) {
+                      setNotification({
+                        show: true,
+                        message: 'Please reconnect your wallet session.',
+                        type: 'error'
+                      });
+                      return;
+                    }
+
                     // Set loading immediately to prevent double clicks
                     setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
 
-                    // Open PRISM app
-                    window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-
                     // Claim reward
                     try {
-                      console.log('[PRISM] Claiming reward with token:', token ? 'Present' : 'Missing');
-                      const response = await axios.post(
+                      console.log('[PRISM] Claiming reward with token:', authToken ? 'Present' : 'Missing');
+                      // Start claim before opening PRISM to avoid request suspension when app loses focus.
+                      const claimPromise = axios.post(
                         `${API_BASE_URL}/users/claim-prism-reward`,
                         {},
-                        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                        { headers: { Authorization: `Bearer ${authToken}` } }
                       );
 
+                      window.open(PRISM_APP_URL, '_blank');
+
+                      const response = await claimPromise;
                       console.log('[PRISM] API Response:', response.data);
 
                       if (response.data.success) {
@@ -727,12 +775,7 @@ const SocialConnect = () => {
                           message: `🎉 ${response.data.message}`,
                           type: 'success'
                         });
-                        setPrismRewardStatus({
-                          canClaim: false,
-                          hoursLeft: 23,
-                          minutesLeft: 59,
-                          loading: false
-                        });
+                        await refreshPrismRewardStatus(authToken);
                       } else {
                         // API returned but not success
                         setNotification({
@@ -740,7 +783,7 @@ const SocialConnect = () => {
                           message: response.data.message || 'Reward claimed! Check your balance.',
                           type: 'info'
                         });
-                        setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: false }));
+                        await refreshPrismRewardStatus(authToken);
                       }
                     } catch (err) {
                       console.error('[PRISM] Error claiming reward:', err);
