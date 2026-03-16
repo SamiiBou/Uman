@@ -40,6 +40,45 @@ const ERC20_ABI = [
   "function decimals() view returns (uint8)"
 ];
 const PRISM_REVIEW_MAX_PARTICIPANTS = 9000;
+const FEATURED_APP_REWARD_AMOUNT = 100;
+const FEATURED_APP_SCREENSHOT_MAX_PARTICIPANTS = 500;
+
+function getTodayMidnightUTC(date = new Date()) {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    0,
+    0,
+    0,
+    0
+  ));
+}
+
+function getDailyRewardStatus(lastClaimDate, now = new Date()) {
+  const todayMidnightUTC = getTodayMidnightUTC(now);
+  const canClaim = !lastClaimDate || new Date(lastClaimDate) < todayMidnightUTC;
+
+  if (canClaim) {
+    return {
+      canClaim: true,
+      nextClaimTime: null,
+      hoursLeft: 0,
+      minutesLeft: 0
+    };
+  }
+
+  const nextClaimTime = new Date(todayMidnightUTC);
+  nextClaimTime.setUTCDate(nextClaimTime.getUTCDate() + 1);
+  const timeUntilNextClaim = nextClaimTime - now;
+
+  return {
+    canClaim: false,
+    nextClaimTime,
+    hoursLeft: Math.floor(timeUntilNextClaim / (1000 * 60 * 60)),
+    minutesLeft: Math.floor((timeUntilNextClaim % (1000 * 60 * 60)) / (1000 * 60))
+  };
+}
 
 // Public routes (no authentication required)
 router.get('/search', searchUsers);
@@ -124,6 +163,68 @@ router.post('/claim-prism-reward', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('[PRISM Reward] Error claiming reward:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error claiming reward',
+      error: error.message
+    });
+  }
+});
+
+// Featured app daily reward - claim 100 UMI tokens once per day
+router.post('/claim-featured-app-reward', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const now = new Date();
+    const rewardStatus = getDailyRewardStatus(user.featuredAppReward?.lastClaimDate, now);
+
+    if (!rewardStatus.canClaim) {
+      return res.status(400).json({
+        success: false,
+        message: `Already claimed today. Next claim in ${rewardStatus.hoursLeft}h ${rewardStatus.minutesLeft}m`,
+        alreadyClaimed: true,
+        nextClaimTime: rewardStatus.nextClaimTime.toISOString(),
+        hoursLeft: rewardStatus.hoursLeft,
+        minutesLeft: rewardStatus.minutesLeft
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $inc: { tokenBalance: FEATURED_APP_REWARD_AMOUNT },
+        $set: { 'featuredAppReward.lastClaimDate': now }
+      },
+      { new: true }
+    );
+
+    console.log(`[FEATURED APP Reward] User ${userId} claimed ${FEATURED_APP_REWARD_AMOUNT} UMI tokens. New balance: ${updatedUser.tokenBalance}`);
+
+    return res.json({
+      success: true,
+      message: `+${FEATURED_APP_REWARD_AMOUNT} UMI tokens claimed!`,
+      reward: FEATURED_APP_REWARD_AMOUNT,
+      newBalance: updatedUser.tokenBalance,
+      claimedAt: now.toISOString()
+    });
+  } catch (error) {
+    console.error('[FEATURED APP Reward] Error claiming reward:', error);
     return res.status(500).json({
       success: false,
       message: 'Server error claiming reward',
@@ -220,6 +321,84 @@ router.post('/participate-prism-review', authenticateToken, async (req, res) => 
   }
 });
 
+// Get featured app screenshot challenge status
+router.get('/featured-app-screenshot-challenge-status', async (req, res) => {
+  try {
+    const participantCount = await User.countDocuments({ 'featuredAppScreenshotChallenge.participated': true });
+    const maxParticipants = FEATURED_APP_SCREENSHOT_MAX_PARTICIPANTS;
+    const spotsRemaining = Math.max(0, maxParticipants - participantCount);
+    const isChallengeOpen = participantCount < maxParticipants;
+
+    return res.json({
+      success: true,
+      participantCount,
+      maxParticipants,
+      spotsRemaining,
+      isChallengeOpen,
+      reward: '0.2 WLD'
+    });
+  } catch (error) {
+    console.error('[FEATURED APP Screenshot Challenge] Error getting status:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Participate in featured app screenshot challenge
+router.post('/participate-featured-app-screenshot-challenge', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.featuredAppScreenshotChallenge?.participated) {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already participated in this challenge',
+        alreadyParticipated: true
+      });
+    }
+
+    const currentCount = await User.countDocuments({ 'featuredAppScreenshotChallenge.participated': true });
+    const maxParticipants = FEATURED_APP_SCREENSHOT_MAX_PARTICIPANTS;
+
+    if (currentCount >= maxParticipants) {
+      return res.status(400).json({
+        success: false,
+        message: `Challenge is closed! Maximum participants reached (${maxParticipants}/${maxParticipants})`,
+        challengeClosed: true
+      });
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        'featuredAppScreenshotChallenge.participated': true,
+        'featuredAppScreenshotChallenge.participatedAt': new Date()
+      }
+    });
+
+    const newCount = await User.countDocuments({ 'featuredAppScreenshotChallenge.participated': true });
+
+    console.log(`[FEATURED APP Screenshot Challenge] User ${userId} participated. Total: ${newCount}/${maxParticipants}`);
+
+    return res.json({
+      success: true,
+      message: 'Successfully registered for the challenge! Open the featured app and send your screenshot to support to receive 0.2 WLD.',
+      participantNumber: newCount,
+      spotsRemaining: Math.max(0, maxParticipants - newCount)
+    });
+  } catch (error) {
+    console.error('[FEATURED APP Screenshot Challenge] Error participating:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // Get PRISM reward status (check if can claim)
 router.get('/prism-reward-status', authenticateToken, async (req, res) => {
   try {
@@ -260,6 +439,33 @@ router.get('/prism-reward-status', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('[PRISM Reward] Error checking status:', error);
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// Get featured app reward status (check if can claim)
+router.get('/featured-app-reward-status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const user = await User.findById(userId).select('featuredAppReward tokenBalance');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const rewardStatus = getDailyRewardStatus(user.featuredAppReward?.lastClaimDate);
+
+    return res.json({
+      success: true,
+      canClaim: rewardStatus.canClaim,
+      lastClaimDate: user.featuredAppReward?.lastClaimDate || null,
+      nextClaimTime: rewardStatus.nextClaimTime?.toISOString() || null,
+      hoursLeft: rewardStatus.hoursLeft,
+      minutesLeft: rewardStatus.minutesLeft,
+      tokenBalance: user.tokenBalance
+    });
+  } catch (error) {
+    console.error('[FEATURED APP Reward] Error checking status:', error);
     return res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });

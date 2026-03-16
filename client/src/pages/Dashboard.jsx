@@ -4,7 +4,7 @@ import { FaCheck, FaInfoCircle, FaShieldAlt, FaLink, FaUnlink } from 'react-icon
 import { Coins } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
-const PRISM_APP_URL = 'https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7';
+import { FEATURED_APP_URL, PRISM_APP_URL } from '../constants/worldApps';
 
 const Dashboard = () => {
   const { user, isLoading } = useAuth();
@@ -14,6 +14,12 @@ const Dashboard = () => {
 
   // PRISM Daily Reward state
   const [prismRewardStatus, setPrismRewardStatus] = useState({
+    canClaim: true,
+    hoursLeft: 0,
+    minutesLeft: 0,
+    loading: false
+  });
+  const [featuredAppRewardStatus, setFeaturedAppRewardStatus] = useState({
     canClaim: true,
     hoursLeft: 0,
     minutesLeft: 0,
@@ -48,10 +54,100 @@ const Dashboard = () => {
     }
   };
 
+  const refreshFeaturedAppRewardStatus = async (authToken = getAuthToken()) => {
+    if (!authToken) return;
+
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/users/featured-app-reward-status`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (data.success) {
+        setFeaturedAppRewardStatus({
+          canClaim: data.canClaim,
+          hoursLeft: data.hoursLeft || 0,
+          minutesLeft: data.minutesLeft || 0,
+          loading: false
+        });
+      } else {
+        setFeaturedAppRewardStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error("Error fetching featured app reward status:", err);
+      setFeaturedAppRewardStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleClaimAppReward = async ({
+    rewardStatus,
+    setRewardStatus,
+    claimEndpoint,
+    appUrl,
+    refreshStatus
+  }) => {
+    if (!rewardStatus.canClaim || rewardStatus.loading) return;
+
+    const authToken = getAuthToken();
+    if (!authToken) {
+      setNotificationMessage('Please reconnect your wallet session.');
+      setNotificationType('error');
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+      return;
+    }
+
+    setRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
+
+    try {
+      const claimPromise = axios.post(
+        `${API_BASE_URL}${claimEndpoint}`,
+        {},
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+
+      window.open(appUrl, '_blank');
+
+      const response = await claimPromise;
+
+      if (response.data.success) {
+        setNotificationMessage(`🎉 ${response.data.message}`);
+        setNotificationType('success');
+      } else {
+        setNotificationMessage(response.data.message || 'Reward claimed!');
+        setNotificationType('info');
+      }
+
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+      await refreshStatus(authToken);
+    } catch (err) {
+      const errData = err.response?.data;
+
+      if (errData?.alreadyClaimed) {
+        setRewardStatus({
+          canClaim: false,
+          hoursLeft: errData.hoursLeft || 0,
+          minutesLeft: errData.minutesLeft || 0,
+          loading: false
+        });
+        setNotificationMessage(`Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`);
+        setNotificationType('info');
+      } else {
+        setNotificationMessage(errData?.message || 'Error claiming reward. Please try again.');
+        setNotificationType('error');
+        setRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
+      }
+
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+    }
+  };
+
   // Fetch PRISM reward status on mount
   useEffect(() => {
     if (token) {
       refreshPrismRewardStatus(token);
+      refreshFeaturedAppRewardStatus(token);
     }
   }, [token]);
 
@@ -60,11 +156,13 @@ const Dashboard = () => {
     const handleVisible = () => {
       if (document.visibilityState === 'visible') {
         refreshPrismRewardStatus();
+        refreshFeaturedAppRewardStatus();
       }
     };
 
     const handleFocus = () => {
       refreshPrismRewardStatus();
+      refreshFeaturedAppRewardStatus();
     };
 
     window.addEventListener('focus', handleFocus);
@@ -138,73 +236,13 @@ const Dashboard = () => {
           </div>
           <button
             className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
-            onClick={async () => {
-              if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
-
-              const authToken = getAuthToken();
-              if (!authToken) {
-                setNotificationMessage('Please reconnect your wallet session.');
-                setNotificationType('error');
-                setShowNotification(true);
-                setTimeout(() => setShowNotification(false), 3000);
-                return;
-              }
-
-              // Set loading immediately to prevent double clicks
-              setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
-
-              // Claim reward
-              try {
-                console.log('[PRISM] Claiming reward with token:', authToken ? 'Present' : 'Missing');
-                // Start claim before opening PRISM to avoid request suspension on background.
-                const claimPromise = axios.post(
-                  `${API_BASE_URL}/users/claim-prism-reward`,
-                  {},
-                  { headers: { Authorization: `Bearer ${authToken}` } }
-                );
-
-                window.open(PRISM_APP_URL, '_blank');
-
-                const response = await claimPromise;
-                console.log('[PRISM] API Response:', response.data);
-
-                if (response.data.success) {
-                  setNotificationMessage(`🎉 ${response.data.message}`);
-                  setNotificationType('success');
-                  setShowNotification(true);
-                  setTimeout(() => setShowNotification(false), 3000);
-                  await refreshPrismRewardStatus(authToken);
-                } else {
-                  setNotificationMessage(response.data.message || 'Reward claimed!');
-                  setNotificationType('info');
-                  setShowNotification(true);
-                  setTimeout(() => setShowNotification(false), 3000);
-                  await refreshPrismRewardStatus(authToken);
-                }
-              } catch (err) {
-                console.error('[PRISM] Error claiming reward:', err);
-                const errData = err.response?.data;
-                if (errData?.alreadyClaimed) {
-                  setPrismRewardStatus({
-                    canClaim: false,
-                    hoursLeft: errData.hoursLeft || 0,
-                    minutesLeft: errData.minutesLeft || 0,
-                    loading: false
-                  });
-                  setNotificationMessage(`Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`);
-                  setNotificationType('info');
-                  setShowNotification(true);
-                  setTimeout(() => setShowNotification(false), 3000);
-                } else {
-                  setNotificationMessage(errData?.message || 'Error claiming reward. Please try again.');
-                  setNotificationType('error');
-                  setShowNotification(true);
-                  setTimeout(() => setShowNotification(false), 3000);
-                  // Re-enable button on error
-                  setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
-                }
-              }
-            }}
+            onClick={() => handleClaimAppReward({
+              rewardStatus: prismRewardStatus,
+              setRewardStatus: setPrismRewardStatus,
+              claimEndpoint: '/users/claim-prism-reward',
+              appUrl: PRISM_APP_URL,
+              refreshStatus: refreshPrismRewardStatus
+            })}
             disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
           >
             {prismRewardStatus.loading ? (
@@ -213,6 +251,37 @@ const Dashboard = () => {
               <span>Open PRISM & Claim</span>
             ) : (
               <span>{prismRewardStatus.hoursLeft}h {prismRewardStatus.minutesLeft}m</span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="prism-reward-card mb-md">
+        <div className="prism-reward-content">
+          <div className="prism-reward-icon">
+            <Coins size={24} />
+          </div>
+          <div className="prism-reward-text">
+            <h4>Daily Bonus: +100 UMI</h4>
+            <p>Open this app and visit it to receive 100 UMI tokens</p>
+          </div>
+          <button
+            className={`prism-claim-btn ${!featuredAppRewardStatus.canClaim ? 'disabled' : ''}`}
+            onClick={() => handleClaimAppReward({
+              rewardStatus: featuredAppRewardStatus,
+              setRewardStatus: setFeaturedAppRewardStatus,
+              claimEndpoint: '/users/claim-featured-app-reward',
+              appUrl: FEATURED_APP_URL,
+              refreshStatus: refreshFeaturedAppRewardStatus
+            })}
+            disabled={!featuredAppRewardStatus.canClaim || featuredAppRewardStatus.loading}
+          >
+            {featuredAppRewardStatus.loading ? (
+              <span>Claiming...</span>
+            ) : featuredAppRewardStatus.canClaim ? (
+              <span>Open App & Claim</span>
+            ) : (
+              <span>{featuredAppRewardStatus.hoursLeft}h {featuredAppRewardStatus.minutesLeft}m</span>
             )}
           </button>
         </div>

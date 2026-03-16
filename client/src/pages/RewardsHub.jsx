@@ -21,10 +21,10 @@ const FaX = () => (
 );
 
 import { API_BASE_URL, BACKEND_URL } from '../config';
+import { FEATURED_APP_URL, PRISM_APP_URL } from '../constants/worldApps';
 
 // Token contract details (copied from ConnectAccounts)
 const API_TIMEOUT = 15000;
-const PRISM_APP_URL = 'https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7';
 const TOKEN_CONTRACT_ADDRESS = import.meta.env.VITE_TOKEN_CONTRACT_ADDRESS || '0x41Da2F787e0122E2e6A72fEa5d3a4e84263511a8';
 
 const ERC20_ABI = [
@@ -64,11 +64,18 @@ const RewardsHub = () => {
     loading: false
   });
 
-  // PRISM 5-Star Review Challenge state
-  const [reviewChallengeStatus, setReviewChallengeStatus] = useState({
+  const [featuredAppRewardStatus, setFeaturedAppRewardStatus] = useState({
+    canClaim: true,
+    hoursLeft: 0,
+    minutesLeft: 0,
+    loading: false
+  });
+
+  // Featured app screenshot challenge state
+  const [featuredAppChallengeStatus, setFeaturedAppChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 9000,
-    spotsRemaining: 9000,
+    maxParticipants: 500,
+    spotsRemaining: 500,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -320,6 +327,133 @@ const RewardsHub = () => {
     }
   };
 
+  const refreshFeaturedAppRewardStatus = async (authToken = getAuthToken()) => {
+    if (!authToken) return;
+
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/users/featured-app-reward-status`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (data.success) {
+        setFeaturedAppRewardStatus({
+          canClaim: data.canClaim,
+          hoursLeft: data.hoursLeft || 0,
+          minutesLeft: data.minutesLeft || 0,
+          loading: false
+        });
+      } else {
+        setFeaturedAppRewardStatus(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      console.error('[FEATURED APP] Error fetching status:', err);
+      setFeaturedAppRewardStatus(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleClaimDailyAppReward = async ({
+    rewardStatus,
+    setRewardStatus,
+    claimEndpoint,
+    appUrl,
+    refreshStatus
+  }) => {
+    if (!rewardStatus.canClaim || rewardStatus.loading) return;
+
+    const authToken = getAuthToken();
+    if (!authToken) {
+      setNotification({ show: true, message: 'Please reconnect your wallet session.', type: 'error' });
+      return;
+    }
+
+    setRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
+
+    try {
+      const claimPromise = axios.post(
+        `${API_BASE_URL}${claimEndpoint}`,
+        {},
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+
+      window.open(appUrl, '_blank');
+
+      const response = await claimPromise;
+      if (response.data.success) {
+        setNotification({ show: true, message: `🎉 ${response.data.message}`, type: 'success' });
+        const newBalance = Number(response.data.newBalance);
+        if (Number.isFinite(newBalance)) {
+          setUmiBalance(newBalance);
+        }
+      } else {
+        setNotification({ show: true, message: response.data.message || 'Reward claimed!', type: 'info' });
+      }
+
+      await refreshStatus(authToken);
+    } catch (err) {
+      const errData = err.response?.data;
+      if (errData?.alreadyClaimed) {
+        setRewardStatus({
+          canClaim: false,
+          hoursLeft: errData.hoursLeft || 0,
+          minutesLeft: errData.minutesLeft || 0,
+          loading: false
+        });
+        setNotification({ show: true, message: `Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`, type: 'info' });
+      } else {
+        setNotification({ show: true, message: errData?.message || 'Error claiming reward.', type: 'error' });
+        setRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
+      }
+    }
+
+    setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 4000);
+  };
+
+  const handleParticipateFeaturedAppChallenge = async () => {
+    if (!featuredAppChallengeStatus.isChallengeOpen) {
+      setNotification({ show: true, message: 'Challenge closed! Maximum participants reached.', type: 'info' });
+      return;
+    }
+
+    if (featuredAppChallengeStatus.hasParticipated) {
+      window.open(FEATURED_APP_URL, '_blank');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/users/participate-featured-app-screenshot-challenge`,
+        {},
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+
+      if (response.data.success) {
+        setNotification({
+          show: true,
+          message: `🎉 Registered! You are #${response.data.participantNumber}. Open the app and send your screenshot to support!`,
+          type: 'success'
+        });
+        setFeaturedAppChallengeStatus(prev => ({
+          ...prev,
+          participantCount: response.data.participantNumber,
+          spotsRemaining: response.data.spotsRemaining,
+          hasParticipated: true,
+          isChallengeOpen: response.data.spotsRemaining > 0
+        }));
+      }
+    } catch (err) {
+      if (err.response?.data?.alreadyParticipated) {
+        setNotification({ show: true, message: 'You have already participated!', type: 'info' });
+        setFeaturedAppChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+      } else if (err.response?.data?.challengeClosed) {
+        setNotification({ show: true, message: `Challenge closed! ${featuredAppChallengeStatus.maxParticipants} spots filled.`, type: 'info' });
+      } else {
+        setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
+      }
+    }
+
+    window.open(FEATURED_APP_URL, '_blank');
+  };
+
   useEffect(() => {
     if (firstLoginOfDay && todaysReward !== null) {
       // Calculate how many seconds in a day the reward will be distributed over
@@ -489,6 +623,7 @@ const RewardsHub = () => {
   useEffect(() => {
     if (token) {
       refreshPrismRewardStatus(token);
+      refreshFeaturedAppRewardStatus(token);
     }
   }, [token]);
 
@@ -497,11 +632,13 @@ const RewardsHub = () => {
     const handleVisible = () => {
       if (document.visibilityState === 'visible') {
         refreshPrismRewardStatus();
+        refreshFeaturedAppRewardStatus();
       }
     };
 
     const handleFocus = () => {
       refreshPrismRewardStatus();
+      refreshFeaturedAppRewardStatus();
     };
 
     window.addEventListener('focus', handleFocus);
@@ -515,15 +652,14 @@ const RewardsHub = () => {
     };
   }, [token]);
 
-  // Fetch PRISM 5-Star Review Challenge status
+  // Fetch featured app screenshot challenge status
   useEffect(() => {
     const fetchChallengeStatus = async () => {
       try {
-        // Fetch global challenge status (public endpoint)
-        const statusRes = await axios.get(`${API_BASE_URL}/users/prism-review-challenge-status`);
+        const statusRes = await axios.get(`${API_BASE_URL}/users/featured-app-screenshot-challenge-status`);
 
         if (statusRes.data.success) {
-          setReviewChallengeStatus(prev => ({
+          setFeaturedAppChallengeStatus(prev => ({
             ...prev,
             participantCount: statusRes.data.participantCount,
             maxParticipants: statusRes.data.maxParticipants,
@@ -533,28 +669,26 @@ const RewardsHub = () => {
           }));
         }
       } catch (err) {
-        console.error('[PRISM Review Challenge] Error fetching status:', err);
-        setReviewChallengeStatus(prev => ({ ...prev, loading: false }));
+        console.error('[FEATURED APP Challenge] Error fetching status:', err);
+        setFeaturedAppChallengeStatus(prev => ({ ...prev, loading: false }));
       }
     };
 
     fetchChallengeStatus();
   }, []);
 
-  // Check if current user has already participated in review challenge
+  // Check if current user has already participated in the featured app challenge
   useEffect(() => {
     if (token && userId) {
-      // We check by trying to call participate - if already participated, we get that info
-      // Or we could add a dedicated endpoint. For now, we'll check via auth/me if the field exists
       axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(({ data }) => {
-          if (data.prismReviewChallenge?.participated) {
-            setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
+          if (data.featuredAppScreenshotChallenge?.participated) {
+            setFeaturedAppChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
           }
         })
-        .catch(err => console.error('[PRISM Review] Error checking participation:', err));
+        .catch(err => console.error('[FEATURED APP Challenge] Error checking participation:', err));
     }
   }, [token, userId]);
 
@@ -925,54 +1059,41 @@ const RewardsHub = () => {
             </div>
             <button
               className={`prism-claim-btn ${!prismRewardStatus.canClaim ? 'disabled' : ''}`}
-              onClick={async () => {
-                if (!prismRewardStatus.canClaim || prismRewardStatus.loading) return;
-
-                const authToken = getAuthToken();
-                if (!authToken) {
-                  setNotification({ show: true, message: 'Please reconnect your wallet session.', type: 'error' });
-                  return;
-                }
-
-                setPrismRewardStatus(prev => ({ ...prev, loading: true, canClaim: false }));
-
-                try {
-                  // Start the claim request before opening PRISM to avoid background cancellation on mobile.
-                  const claimPromise = axios.post(
-                    `${API_BASE_URL}/users/claim-prism-reward`,
-                    {},
-                    { headers: { Authorization: `Bearer ${authToken}` } }
-                  );
-
-                  window.open(PRISM_APP_URL, '_blank');
-
-                  const response = await claimPromise;
-                  if (response.data.success) {
-                    setNotification({ show: true, message: `🎉 ${response.data.message}`, type: 'success' });
-                    const newBalance = Number(response.data.newBalance);
-                    if (Number.isFinite(newBalance)) {
-                      setUmiBalance(newBalance);
-                    }
-                    await refreshPrismRewardStatus(authToken);
-                  } else {
-                    setNotification({ show: true, message: response.data.message || 'Reward claimed!', type: 'info' });
-                    await refreshPrismRewardStatus(authToken);
-                  }
-                } catch (err) {
-                  const errData = err.response?.data;
-                  if (errData?.alreadyClaimed) {
-                    setPrismRewardStatus({ canClaim: false, hoursLeft: errData.hoursLeft || 0, minutesLeft: errData.minutesLeft || 0, loading: false });
-                    setNotification({ show: true, message: `Already claimed! Next in ${errData.hoursLeft}h ${errData.minutesLeft}m`, type: 'info' });
-                  } else {
-                    setNotification({ show: true, message: errData?.message || 'Error claiming reward.', type: 'error' });
-                    setPrismRewardStatus(prev => ({ ...prev, loading: false, canClaim: true }));
-                  }
-                }
-                setTimeout(() => setNotification({ show: false, message: '', type: 'info' }), 4000);
-              }}
+              onClick={() => handleClaimDailyAppReward({
+                rewardStatus: prismRewardStatus,
+                setRewardStatus: setPrismRewardStatus,
+                claimEndpoint: '/users/claim-prism-reward',
+                appUrl: PRISM_APP_URL,
+                refreshStatus: refreshPrismRewardStatus
+              })}
               disabled={!prismRewardStatus.canClaim || prismRewardStatus.loading}
             >
               {prismRewardStatus.loading ? 'Claiming...' : prismRewardStatus.canClaim ? 'Open PRISM & Claim' : `${prismRewardStatus.hoursLeft}h ${prismRewardStatus.minutesLeft}m`}
+            </button>
+          </div>
+        </div>
+
+        <div className="prism-reward-card compact">
+          <div className="prism-reward-content">
+            <div className="prism-reward-icon small">
+              <Coins size={20} />
+            </div>
+            <div className="prism-reward-text">
+              <h4>Daily Bonus: +100 UMI</h4>
+              <p>Open this app and visit it to receive 100 UMI</p>
+            </div>
+            <button
+              className={`prism-claim-btn ${!featuredAppRewardStatus.canClaim ? 'disabled' : ''}`}
+              onClick={() => handleClaimDailyAppReward({
+                rewardStatus: featuredAppRewardStatus,
+                setRewardStatus: setFeaturedAppRewardStatus,
+                claimEndpoint: '/users/claim-featured-app-reward',
+                appUrl: FEATURED_APP_URL,
+                refreshStatus: refreshFeaturedAppRewardStatus
+              })}
+              disabled={!featuredAppRewardStatus.canClaim || featuredAppRewardStatus.loading}
+            >
+              {featuredAppRewardStatus.loading ? 'Claiming...' : featuredAppRewardStatus.canClaim ? 'Open App & Claim' : `${featuredAppRewardStatus.hoursLeft}h ${featuredAppRewardStatus.minutesLeft}m`}
             </button>
           </div>
         </div>
@@ -987,50 +1108,20 @@ const RewardsHub = () => {
                   <Award size={18} />
                 </div>
                 <div className="challenge-compact-text">
-                  <span className="challenge-compact-title">⭐ Rate PRISM 5 Stars → Get <strong>0.2 WLD</strong></span>
+                  <span className="challenge-compact-title">📸 Featured App Screenshot → Get <strong>0.2 WLD</strong></span>
                 <div className="challenge-compact-counter">
                   <span>
-                    {reviewChallengeStatus.participantCount}/{reviewChallengeStatus.maxParticipants} participants
+                    {featuredAppChallengeStatus.participantCount}/{featuredAppChallengeStatus.maxParticipants} participants
                   </span>
                 </div>
                 </div>
               </div>
               <button
-                className={`challenge-compact-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
-                onClick={async () => {
-                  if (!reviewChallengeStatus.isChallengeOpen) {
-                    setNotification({ show: true, message: 'Challenge closed! Maximum participants reached.', type: 'info' });
-                    return;
-                  }
-                  if (reviewChallengeStatus.hasParticipated) {
-                    window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-                    return;
-                  }
-                  try {
-                    const response = await axios.post(
-                      `${API_BASE_URL}/users/participate-prism-review`,
-                      {},
-                      { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-                    );
-                    if (response.data.success) {
-                      setNotification({ show: true, message: `🎉 Registered! You are #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`, type: 'success' });
-                      setReviewChallengeStatus(prev => ({ ...prev, participantCount: response.data.participantNumber, spotsRemaining: response.data.spotsRemaining, hasParticipated: true, isChallengeOpen: response.data.spotsRemaining > 0 }));
-                    }
-                  } catch (err) {
-                    if (err.response?.data?.alreadyParticipated) {
-                      setNotification({ show: true, message: 'You have already participated!', type: 'info' });
-                      setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
-                    } else if (err.response?.data?.challengeClosed) {
-                      setNotification({ show: true, message: `Challenge closed! ${reviewChallengeStatus.maxParticipants} spots filled.`, type: 'info' });
-                    } else {
-                      setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
-                    }
-                  }
-                  window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-                }}
-                disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+                className={`challenge-compact-btn ${!featuredAppChallengeStatus.isChallengeOpen || featuredAppChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+                onClick={handleParticipateFeaturedAppChallenge}
+                disabled={!featuredAppChallengeStatus.isChallengeOpen && !featuredAppChallengeStatus.hasParticipated}
               >
-                {!reviewChallengeStatus.isChallengeOpen ? 'Closed' : reviewChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
+                {!featuredAppChallengeStatus.isChallengeOpen ? 'Closed' : featuredAppChallengeStatus.hasParticipated ? 'Open App' : 'Participate'}
               </button>
             </div>
           </div>
@@ -1162,84 +1253,40 @@ const RewardsHub = () => {
                 <Award size={24} />
               </div>
               <div className="challenge-badge limited">
-                <span>Limited to {reviewChallengeStatus.maxParticipants} first users!</span>
+                <span>Limited to {featuredAppChallengeStatus.maxParticipants} first users!</span>
               </div>
             </div>
 
             <div className="challenge-content">
-              <h4 className="challenge-title">⭐ Rate PRISM 5 Stars</h4>
+              <h4 className="challenge-title">📸 Featured App Screenshot</h4>
               <p className="challenge-description">
-                Put a 5-star review on PRISM app and send screenshot to our support team to receive <strong>0.2 WLD</strong>
+                Open this app, take a screenshot, and send it to our support team to receive <strong>0.2 WLD</strong>
               </p>
 
               <div className="challenge-counter">
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(reviewChallengeStatus.participantCount / (reviewChallengeStatus.maxParticipants || 9000)) * 100}%` }}
+                    style={{ width: `${(featuredAppChallengeStatus.participantCount / (featuredAppChallengeStatus.maxParticipants || 500)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
-                  {reviewChallengeStatus.participantCount}/{reviewChallengeStatus.maxParticipants} participants
+                  {featuredAppChallengeStatus.participantCount}/{featuredAppChallengeStatus.maxParticipants} participants
                 </span>
               </div>
             </div>
 
             <button
-              className={`challenge-btn ${!reviewChallengeStatus.isChallengeOpen || reviewChallengeStatus.hasParticipated ? 'disabled' : ''}`}
-              onClick={async () => {
-                if (!reviewChallengeStatus.isChallengeOpen) {
-                  setNotification({ show: true, message: 'Challenge is closed! Maximum participants reached.', type: 'info' });
-                  return;
-                }
-
-                if (reviewChallengeStatus.hasParticipated) {
-                  window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-                  return;
-                }
-
-                try {
-                  const response = await axios.post(
-                    `${API_BASE_URL}/users/participate-prism-review`,
-                    {},
-                    { headers: token ? { Authorization: `Bearer ${token}` } : {} }
-                  );
-
-                  if (response.data.success) {
-                    setNotification({
-                      show: true,
-                      message: `🎉 Registered! You are participant #${response.data.participantNumber}. Rate 5 stars and send screenshot to support!`,
-                      type: 'success'
-                    });
-                    setReviewChallengeStatus(prev => ({
-                      ...prev,
-                      participantCount: response.data.participantNumber,
-                      spotsRemaining: response.data.spotsRemaining,
-                      hasParticipated: true,
-                      isChallengeOpen: response.data.spotsRemaining > 0
-                    }));
-                  }
-                } catch (err) {
-                  if (err.response?.data?.alreadyParticipated) {
-                    setNotification({ show: true, message: 'You have already participated!', type: 'info' });
-                    setReviewChallengeStatus(prev => ({ ...prev, hasParticipated: true }));
-                  } else if (err.response?.data?.challengeClosed) {
-                    setNotification({ show: true, message: `Challenge closed! ${reviewChallengeStatus.maxParticipants} spots filled.`, type: 'info' });
-                  } else {
-                    setNotification({ show: true, message: err.response?.data?.message || 'Error participating', type: 'error' });
-                  }
-                }
-
-                window.open('https://world.org/mini-app?app_id=app_df74242b069963d3e417258717ab60e7', '_blank');
-              }}
-              disabled={!reviewChallengeStatus.isChallengeOpen && !reviewChallengeStatus.hasParticipated}
+              className={`challenge-btn ${!featuredAppChallengeStatus.isChallengeOpen || featuredAppChallengeStatus.hasParticipated ? 'disabled' : ''}`}
+              onClick={handleParticipateFeaturedAppChallenge}
+              disabled={!featuredAppChallengeStatus.isChallengeOpen && !featuredAppChallengeStatus.hasParticipated}
             >
-              {!reviewChallengeStatus.isChallengeOpen ? (
+              {!featuredAppChallengeStatus.isChallengeOpen ? (
                 <span>Challenge Closed</span>
-              ) : reviewChallengeStatus.hasParticipated ? (
-                <span>Open PRISM App</span>
+              ) : featuredAppChallengeStatus.hasParticipated ? (
+                <span>Open App</span>
               ) : (
-                <span>Participate & Rate ⭐</span>
+                <span>Participate & Send Screenshot</span>
               )}
             </button>
           </div>

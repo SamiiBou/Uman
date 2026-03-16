@@ -183,8 +183,19 @@ const UserSchema = new mongoose.Schema(
       lastClaimDate: { type: Date, default: null }
     },
 
+    /* ------- Featured App Daily Reward -------------------------- */
+    featuredAppReward: {
+      lastClaimDate: { type: Date, default: null }
+    },
+
     /* ------- PRISM 5-Star Review Challenge ----------------------- */
     prismReviewChallenge: {
+      participated: { type: Boolean, default: false },
+      participatedAt: { type: Date, default: null }
+    },
+
+    /* ------- Featured App Screenshot Challenge ------------------ */
+    featuredAppScreenshotChallenge: {
       participated: { type: Boolean, default: false },
       participatedAt: { type: Date, default: null }
     },
