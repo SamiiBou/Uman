@@ -429,7 +429,7 @@ const RewardsHub = () => {
       if (response.data.success) {
         setNotification({
           show: true,
-          message: `🎉 Registered! You are #${response.data.participantNumber}. Open the app and send your screenshot to support!`,
+          message: `🎉 Registered! You are #${response.data.participantNumber}. Leave a 5-star review and send the proof to support!`,
           type: 'success'
         });
         setFeaturedAppChallengeStatus(prev => ({
@@ -1108,7 +1108,7 @@ const RewardsHub = () => {
                   <Award size={18} />
                 </div>
                 <div className="challenge-compact-text">
-                  <span className="challenge-compact-title">📸 Featured App Screenshot → Get <strong>0.2 WLD</strong></span>
+                  <span className="challenge-compact-title">⭐ Featured App 5-Star Proof → Get <strong>0.2 WLD</strong></span>
                 <div className="challenge-compact-counter">
                   <span>
                     {featuredAppChallengeStatus.participantCount}/{featuredAppChallengeStatus.maxParticipants} participants
@@ -1258,9 +1258,9 @@ const RewardsHub = () => {
             </div>
 
             <div className="challenge-content">
-              <h4 className="challenge-title">📸 Featured App Screenshot</h4>
+              <h4 className="challenge-title">⭐ Featured App 5-Star Proof</h4>
               <p className="challenge-description">
-                Open this app, take a screenshot, and send it to our support team to receive <strong>0.2 WLD</strong>
+                Leave a 5-star review on this app, then send the screenshot proof to our support team to receive <strong>0.2 WLD</strong>
               </p>
 
               <div className="challenge-counter">
@@ -1286,7 +1286,7 @@ const RewardsHub = () => {
               ) : featuredAppChallengeStatus.hasParticipated ? (
                 <span>Open App</span>
               ) : (
-                <span>Participate & Send Screenshot</span>
+                <span>Participate & Send 5-Star Proof</span>
               )}
             </button>
           </div>

@@ -347,7 +347,7 @@ const SocialConnect = () => {
       if (response.data.success) {
         setNotification({
           show: true,
-          message: `🎉 Registered! You are #${response.data.participantNumber}. Open the app and send your screenshot to support!`,
+          message: `🎉 Registered! You are #${response.data.participantNumber}. Leave a 5-star review and send the proof to support!`,
           type: 'success'
         });
         setFeaturedAppChallengeStatus(prev => ({
@@ -966,7 +966,7 @@ const SocialConnect = () => {
               </div>
             )}
 
-            {/* Featured app screenshot challenge - Compact */}
+            {/* Featured app 5-star proof challenge - Compact */}
             <div className="prism-review-challenge-compact">
               <div className="challenge-compact-content">
                 <div className="challenge-compact-left">
@@ -974,7 +974,7 @@ const SocialConnect = () => {
                     <Award size={18} />
                   </div>
                   <div className="challenge-compact-text">
-                    <span className="challenge-compact-title">📸 Featured App Screenshot → Get <strong>0.2 WLD</strong></span>
+                    <span className="challenge-compact-title">⭐ Featured App 5-Star Proof → Get <strong>0.2 WLD</strong></span>
                     <div className="challenge-compact-counter">
                       <span>
                         {featuredAppChallengeStatus.participantCount}/{featuredAppChallengeStatus.maxParticipants} participants

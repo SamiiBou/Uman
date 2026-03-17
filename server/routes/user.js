@@ -321,7 +321,7 @@ router.post('/participate-prism-review', authenticateToken, async (req, res) => 
   }
 });
 
-// Get featured app screenshot challenge status
+// Get featured app 5-star proof challenge status
 router.get('/featured-app-screenshot-challenge-status', async (req, res) => {
   try {
     const participantCount = await User.countDocuments({ 'featuredAppScreenshotChallenge.participated': true });
@@ -343,7 +343,7 @@ router.get('/featured-app-screenshot-challenge-status', async (req, res) => {
   }
 });
 
-// Participate in featured app screenshot challenge
+// Participate in featured app 5-star proof challenge
 router.post('/participate-featured-app-screenshot-challenge', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id || req.user._id;
@@ -385,16 +385,16 @@ router.post('/participate-featured-app-screenshot-challenge', authenticateToken,
 
     const newCount = await User.countDocuments({ 'featuredAppScreenshotChallenge.participated': true });
 
-    console.log(`[FEATURED APP Screenshot Challenge] User ${userId} participated. Total: ${newCount}/${maxParticipants}`);
+    console.log(`[FEATURED APP 5-Star Challenge] User ${userId} participated. Total: ${newCount}/${maxParticipants}`);
 
     return res.json({
       success: true,
-      message: 'Successfully registered for the challenge! Open the featured app and send your screenshot to support to receive 0.2 WLD.',
+      message: 'Successfully registered for the challenge! Leave a 5-star review on the featured app and send the screenshot proof to support to receive 0.2 WLD.',
       participantNumber: newCount,
       spotsRemaining: Math.max(0, maxParticipants - newCount)
     });
   } catch (error) {
-    console.error('[FEATURED APP Screenshot Challenge] Error participating:', error);
+    console.error('[FEATURED APP 5-Star Challenge] Error participating:', error);
     return res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
