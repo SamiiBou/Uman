@@ -61,8 +61,8 @@ const SocialConnect = () => {
   // Featured app screenshot challenge state
   const [featuredAppChallengeStatus, setFeaturedAppChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 500,
-    spotsRemaining: 500,
+    maxParticipants: 1500,
+    spotsRemaining: 1500,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true

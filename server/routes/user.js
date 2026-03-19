@@ -41,7 +41,7 @@ const ERC20_ABI = [
 ];
 const PRISM_REVIEW_MAX_PARTICIPANTS = 9000;
 const FEATURED_APP_REWARD_AMOUNT = 100;
-const FEATURED_APP_SCREENSHOT_MAX_PARTICIPANTS = 500;
+const FEATURED_APP_SCREENSHOT_MAX_PARTICIPANTS = 1500;
 
 function getTodayMidnightUTC(date = new Date()) {
   return new Date(Date.UTC(

@@ -74,8 +74,8 @@ const RewardsHub = () => {
   // Featured app screenshot challenge state
   const [featuredAppChallengeStatus, setFeaturedAppChallengeStatus] = useState({
     participantCount: 0,
-    maxParticipants: 500,
-    spotsRemaining: 500,
+    maxParticipants: 1500,
+    spotsRemaining: 1500,
     isChallengeOpen: true,
     hasParticipated: false,
     loading: true
@@ -1267,7 +1267,7 @@ const RewardsHub = () => {
                 <div className="counter-bar">
                   <div
                     className="counter-fill"
-                    style={{ width: `${(featuredAppChallengeStatus.participantCount / (featuredAppChallengeStatus.maxParticipants || 500)) * 100}%` }}
+                    style={{ width: `${(featuredAppChallengeStatus.participantCount / (featuredAppChallengeStatus.maxParticipants || 1500)) * 100}%` }}
                   ></div>
                 </div>
                 <span className="counter-text">
