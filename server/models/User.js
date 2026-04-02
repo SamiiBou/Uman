@@ -18,6 +18,7 @@ const ClaimPendingSchema = new mongoose.Schema(
   {
     amount: { type: Number, min: 0, required: true },
     nonce: { type: String, required: true },
+    txId: { type: String, default: null },
   },
   { _id: false }
 );

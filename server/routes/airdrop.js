@@ -203,7 +203,13 @@ router.post('/request', auth, async (req, res) => {
         await User.updateOne({ _id: user._id }, { $unset: { claimPending: '' } });
       } else {
         console.warn('[AIRDROP/request] Claim already pending', user.claimPending);
-        return res.status(400).json({ error: 'Claim already pending – confirm or cancel first' });
+        return res.status(400).json({
+          error: 'Claim already pending – confirm or cancel first',
+          pending: {
+            nonce: user.claimPending.nonce,
+            txId: user.claimPending.txId ?? null,
+          },
+        });
       }
     }
 
@@ -275,30 +281,6 @@ router.post('/confirm', auth, async (req, res) => {
        );
       
        return res.json({ ok: true });
-    console.log('[AIRDROP/confirm] DB update result:', update);
-
-    if (!update.matchedCount) {
-      console.warn('[AIRDROP/confirm] No matching pending claim');
-      return res.status(404).json({ error: 'No matching pending claim' });
-    }
-
-    // Quick Worldcoin status check
-    const checkUrl = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}` +
-                     `?app_id=${process.env.APP_ID}&type=transaction`;
-    console.log('[AIRDROP/confirm] Checking Worldcoin status at', checkUrl);
-    const wcResp = await fetch(checkUrl);
-    const wc = await wcResp.json();
-    console.log('[AIRDROP/confirm] Worldcoin status:', wc.transactionStatus);
-
-    if (wc.transactionStatus === 'pending') {
-      console.log('[AIRDROP/confirm] Status pending, returning 202');
-      return res.status(202).json({ status: 'pending' });
-    }
-
-    console.log('[AIRDROP/confirm] Launching monitorTx');
-    monitorTx(userId, txId, nonce).catch(e => console.error('[AIRDROP/confirm] monitorTx error:', e));
-
-    return res.json({ ok: true });
   } catch (e) {
     console.error('[AIRDROP/confirm] ERROR:', e);
     return res.status(500).json({ error: 'Server error' });
