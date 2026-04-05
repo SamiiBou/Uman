@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import User from '../models/User.js';
 import { authenticateToken as auth } from '../middleware/authMiddleware.js';
 import { setTimeout as wait } from 'node:timers/promises';
-import mongoose, { Types } from 'mongoose';   // 👈  AJOUT
+import { Types } from 'mongoose';
 
 
 const router = Router();
@@ -40,7 +40,62 @@ const provider = new ethers.JsonRpcProvider(
 let io;
 export const setSocketIO = (socket) => { io = socket; };
 
-const CLAIM_TTL_MS = 3600 * 1000; // 1h = 3600000ms
+const CLAIM_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LEGACY_CLAIM_TTL_MS = 3600 * 1000; // 1 hour
+
+function buildVoucher(to, amount, nonce, deadline) {
+  return {
+    to,
+    amount: ethers.parseUnits(amount.toString(), 18).toString(),
+    nonce,
+    deadline: deadline.toString(),
+  };
+}
+
+function getClaimDeadlineMs(claimPending) {
+  if (!claimPending) return null;
+
+  const storedDeadline = Number(claimPending.deadline);
+  if (Number.isFinite(storedDeadline) && storedDeadline > 0) {
+    return storedDeadline * 1000;
+  }
+
+  const legacyCreatedAt = Number(claimPending.nonce);
+  if (Number.isFinite(legacyCreatedAt) && legacyCreatedAt > 0) {
+    return legacyCreatedAt + LEGACY_CLAIM_TTL_MS;
+  }
+
+  return null;
+}
+
+function isClaimExpired(claimPending, now = Date.now()) {
+  const deadlineMs = getClaimDeadlineMs(claimPending);
+  return deadlineMs !== null && now >= deadlineMs;
+}
+
+function getRetryAfterSeconds(claimPending, now = Date.now()) {
+  const deadlineMs = getClaimDeadlineMs(claimPending);
+  if (deadlineMs === null) return null;
+  return Math.max(0, Math.ceil((deadlineMs - now) / 1000));
+}
+
+async function clearPendingClaim(userId, claimPending) {
+  if (!claimPending?.nonce) return false;
+
+  const amount = Number(claimPending.amount || 0);
+  const update = { $unset: { claimPending: '' } };
+
+  if (claimPending.reserved && amount > 0) {
+    update.$inc = { tokenBalance: amount };
+  }
+
+  const result = await User.updateOne(
+    { _id: userId, 'claimPending.nonce': String(claimPending.nonce) },
+    update
+  );
+
+  return result.modifiedCount > 0;
+}
 
 async function monitorTx(userId, txId, nonce) {
   console.log(`[monitorTx] 🔍 Starting monitorTx for user=${userId}, txId=${txId}, nonce=${nonce}`);
@@ -88,7 +143,10 @@ async function monitorTx(userId, txId, nonce) {
 
       if (txStatus === 'failed') {
         console.warn(`[monitorTx] Transaction ${txId} a échoué`);
-        await User.updateOne({ _id: userId }, { $unset: { claimPending: '' } });
+        const failedUser = await User.findById(userId).select('claimPending');
+        if (failedUser?.claimPending && String(failedUser.claimPending.nonce) === String(nonce)) {
+          await clearPendingClaim(userId, failedUser.claimPending);
+        }
         io?.to(userId).emit('claim_failed', { nonce });
         return;
       }
@@ -113,14 +171,15 @@ async function monitorTx(userId, txId, nonce) {
       }
 
       const amount = user.claimPending.amount;
-      await User.updateOne(
-        { _id: userId },
-        {
-          $inc:   { tokenBalance: -amount },
-          $unset: { claimPending: '' },
-          $push:  { claimsHistory: { amount, txHash, at: new Date() } }
-        }
-      );
+      const update = {
+        $unset: { claimPending: '' },
+        $push: { claimsHistory: { amount, txHash, at: new Date() } }
+      };
+      if (!user.claimPending.reserved) {
+        update.$inc = { tokenBalance: -amount };
+      }
+
+      await User.updateOne({ _id: userId, 'claimPending.nonce': String(nonce) }, update);
       io?.to(userId).emit('claim_confirmed', { amount });
       console.log(`[monitorTx] 🏁 monitorTx terminé pour txId=${txId}`);
       return;
@@ -142,6 +201,16 @@ async function monitorTx(userId, txId, nonce) {
 export const resumePendingTransactions = async () => {
   console.log('[resumePendingTransactions] 🔄 Checking for pending claims on startup');
   try {
+    const pendingWithoutTx = await User.find({ 'claimPending.txId': null })
+      .select('claimPending _id');
+
+    for (const u of pendingWithoutTx) {
+      if (isClaimExpired(u.claimPending)) {
+        console.log(`[resumePendingTransactions] Clearing expired pending claim for user=${u._id}`);
+        await clearPendingClaim(u._id, u.claimPending);
+      }
+    }
+
     const pendings = await User.find({ 'claimPending.txId': { $exists: true, $ne: null } })
       .select('claimPending _id');
 
@@ -164,7 +233,7 @@ export const resumePendingTransactions = async () => {
 router.post('/request', auth, async (req, res) => {
   console.log('[AIRDROP/request] ➡️ Entry', { userId: req.user.id });
   try {
-    const user = await User.findById(req.user.id)
+    let user = await User.findById(req.user.id)
       .select('walletAddress tokenBalance claimPending');
     console.log('[AIRDROP/request] User DB fetch:', user);
 
@@ -179,35 +248,63 @@ router.post('/request', auth, async (req, res) => {
 
     // Handle expired pending
     if (user.claimPending) {
-      const createdAt = Number(user.claimPending.nonce);
-      const noTxId      = !user.claimPending.txId;
-      const ttlExceeded = Date.now() - createdAt > 5 * 60_000;   // 5 min
+      const noTxId = !user.claimPending.txId;
+      const ttlExceeded = isClaimExpired(user.claimPending);
       
       if (noTxId && !ttlExceeded) {
-        // ↳ On renvoie simplement un *NOUVEAU* voucher (même nonce)
-        const deadline = Math.floor(Date.now() / 1000) + 3600;
-        const amount   = ethers.parseUnits(user.claimPending.amount.toString(), 18).toString();
+        const deadlineMs = getClaimDeadlineMs(user.claimPending);
+        if (!deadlineMs) {
+          return res.status(409).json({
+            error: 'Claim pending but deadline metadata is invalid',
+          });
+        }
 
-        const voucher = {
-          to: user.walletAddress,
-          amount,
-          nonce: user.claimPending.nonce,
-          deadline: deadline.toString(),
-        };
+        const deadline = Math.floor(deadlineMs / 1000);
+        const voucher = buildVoucher(
+          user.walletAddress,
+          user.claimPending.amount,
+          user.claimPending.nonce,
+          deadline
+        );
 
-        const signature = await signer.signTypedData(DOMAIN, VOUCHER_TYPES, voucher);
+        let signature = user.claimPending.signature;
+        if (!signature) {
+          signature = await signer.signTypedData(DOMAIN, VOUCHER_TYPES, voucher);
+          await User.updateOne(
+            { _id: user._id, 'claimPending.nonce': user.claimPending.nonce, 'claimPending.txId': user.claimPending.txId ?? null },
+            {
+              $set: {
+                'claimPending.deadline': voucher.deadline,
+                'claimPending.signature': signature,
+              }
+            }
+          );
+        }
+
         return res.json({ voucher, signature, claimedAmount: user.claimPending.amount, pending: true });
       }
       if (noTxId && ttlExceeded) {        
         console.log('[AIRDROP/request] Expired pending claim, clearing');
-        await User.updateOne({ _id: user._id }, { $unset: { claimPending: '' } });
+        await clearPendingClaim(user._id, user.claimPending);
+        user = await User.findById(req.user.id).select('walletAddress tokenBalance claimPending');
+        if (user?.claimPending) {
+          return res.status(409).json({
+            error: 'Claim state changed while clearing expired voucher, retry the request',
+            pending: {
+              nonce: user.claimPending.nonce,
+              txId: user.claimPending.txId ?? null,
+              retryAfterSeconds: getRetryAfterSeconds(user.claimPending),
+            },
+          });
+        }
       } else {
         console.warn('[AIRDROP/request] Claim already pending', user.claimPending);
         return res.status(400).json({
-          error: 'Claim already pending – confirm or cancel first',
+          error: 'Claim already pending – confirm first or wait for expiration',
           pending: {
             nonce: user.claimPending.nonce,
             txId: user.claimPending.txId ?? null,
+            retryAfterSeconds: getRetryAfterSeconds(user.claimPending),
           },
         });
       }
@@ -220,23 +317,47 @@ router.post('/request', auth, async (req, res) => {
     }
 
     const nonce    = Date.now().toString();
-    const deadline = Math.floor(Date.now() / 1000) + 3600;
-    const voucher  = {
-      to:       user.walletAddress,
-      amount:   ethers.parseUnits(balance.toString(), 18).toString(),
-      nonce,
-      deadline: deadline.toString(),
-    };
+    const deadline = Math.floor((Date.now() + CLAIM_TTL_MS) / 1000);
+    const voucher  = buildVoucher(user.walletAddress, balance, nonce, deadline);
     console.log('[AIRDROP/request] Voucher generated:', voucher);
 
     const signature = await signer.signTypedData(DOMAIN, VOUCHER_TYPES, voucher);
     console.log('[AIRDROP/request] Signature:', signature);
 
     const upd = await User.updateOne(
-      { _id: user._id },
-      { $set: { claimPending: { amount: balance, nonce } } }
+      { _id: user._id, claimPending: null, tokenBalance: { $gte: balance } },
+      {
+        $inc: { tokenBalance: -balance },
+        $set: {
+          claimPending: {
+            amount: balance,
+            nonce,
+            deadline: voucher.deadline,
+            signature,
+            reserved: true,
+            txId: null,
+          }
+        }
+      }
     );
     console.log('[AIRDROP/request] DB update claimPending:', upd);
+
+    if (!upd.modifiedCount) {
+      const refreshedUser = await User.findById(req.user.id).select('walletAddress tokenBalance claimPending');
+      if (refreshedUser?.claimPending) {
+        console.warn('[AIRDROP/request] Claim state changed during reservation');
+        return res.status(409).json({
+          error: 'Claim state changed, retry the request',
+          pending: {
+            nonce: refreshedUser.claimPending.nonce,
+            txId: refreshedUser.claimPending.txId ?? null,
+            retryAfterSeconds: getRetryAfterSeconds(refreshedUser.claimPending),
+          },
+        });
+      }
+
+      return res.status(409).json({ error: 'Claim reservation failed, retry the request' });
+    }
 
     return res.json({ voucher, signature, claimedAmount: balance });
 
@@ -259,28 +380,47 @@ router.post('/confirm', auth, async (req, res) => {
       return res.status(400).json({ error: 'Missing txId or nonce' });
     }
 
-    const _id = new Types.ObjectId(userId);                // ← cast sûr
-    const match = await User.findOne({ _id, 'claimPending.nonce': String(nonce) })
-        .select('claimPending');
-    console.log('[AIRDROP/confirm] Pending before update:', match);
+    const _id = new Types.ObjectId(userId);
+    const pending = await User.findOne({ _id, 'claimPending.nonce': String(nonce) })
+      .select('claimPending');
+    console.log('[AIRDROP/confirm] Pending before update:', pending);
 
-    const updated = await User.findOneAndUpdate(
-         { _id, 'claimPending.nonce': String(nonce), 'claimPending.txId': { $exists: false } },
-         { $set: { 'claimPending.txId': txId } },
-         { new: true }
-       );                       // renvoie le doc après MAJ (null si rien n'a matché)
-      
-       if (!updated) {
-         console.warn('[AIRDROP/confirm] No matching pending claim');
-         return res.status(404).json({ error: 'No matching pending claim' });
-       }
-      
-       // OK ➜ on lance le monitoring
-       monitorTx(userId, txId, nonce).catch(e =>
-         console.error('[AIRDROP/confirm] monitorTx error:', e)
-       );
-      
-       return res.json({ ok: true });
+    if (!pending?.claimPending) {
+      console.warn('[AIRDROP/confirm] No matching pending claim');
+      return res.status(404).json({ error: 'No matching pending claim' });
+    }
+
+    const existingTxId = pending.claimPending.txId;
+    if (existingTxId && existingTxId !== txId) {
+      console.warn('[AIRDROP/confirm] Claim already linked to another transaction', {
+        existingTxId,
+        txId,
+      });
+      return res.status(409).json({ error: 'Claim already linked to another transaction' });
+    }
+
+    if (!existingTxId) {
+      const updated = await User.findOneAndUpdate(
+        { _id, 'claimPending.nonce': String(nonce), 'claimPending.txId': null },
+        { $set: { 'claimPending.txId': txId } },
+        { new: true }
+      );
+
+      if (!updated) {
+        const racedPending = await User.findOne({ _id, 'claimPending.nonce': String(nonce) })
+          .select('claimPending');
+        if (racedPending?.claimPending?.txId !== txId) {
+          console.warn('[AIRDROP/confirm] Pending claim changed during confirmation');
+          return res.status(409).json({ error: 'Pending claim changed during confirmation' });
+        }
+      }
+    }
+
+    monitorTx(userId, txId, nonce).catch(e =>
+      console.error('[AIRDROP/confirm] monitorTx error:', e)
+    );
+
+    return res.json({ ok: true });
   } catch (e) {
     console.error('[AIRDROP/confirm] ERROR:', e);
     return res.status(500).json({ error: 'Server error' });
@@ -302,10 +442,23 @@ router.post('/cancel', auth, async (req, res) => {
       return res.status(400).json({ error: 'No matching pending claim' });
     }
 
-    const upd = await User.updateOne({ _id: user._id }, { $unset: { claimPending: '' } });
-    console.log('[AIRDROP/cancel] DB update result:', upd);
+    if (user.claimPending.txId) {
+      return res.status(409).json({
+        error: 'Transaction already submitted and can no longer be cancelled',
+      });
+    }
 
-    return res.json({ ok: true });
+    if (!isClaimExpired(user.claimPending)) {
+      return res.status(409).json({
+        error: 'Voucher remains valid until it expires and cannot be cancelled immediately',
+        retryAfterSeconds: getRetryAfterSeconds(user.claimPending),
+      });
+    }
+
+    const cleared = await clearPendingClaim(user._id, user.claimPending);
+    console.log('[AIRDROP/cancel] Pending claim cleared after expiry:', cleared);
+
+    return res.json({ ok: true, expired: true });
   } catch (e) {
     console.error('[AIRDROP/cancel] ERROR:', e);
     return res.status(500).json({ error: 'Server error' });

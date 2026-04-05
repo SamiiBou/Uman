@@ -106,50 +106,48 @@ router.post('/claim-prism-reward', authenticateToken, async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
     // Calculate today's midnight UTC
     const now = new Date();
     const todayMidnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
-    // Check if user already claimed today
-    const lastClaim = user.prismReward?.lastClaimDate;
-    if (lastClaim && new Date(lastClaim) >= todayMidnightUTC) {
-      // Calculate time until next claim
-      const nextClaimTime = new Date(todayMidnightUTC);
-      nextClaimTime.setUTCDate(nextClaimTime.getUTCDate() + 1);
-      const timeUntilNextClaim = nextClaimTime - now;
-
-      const hoursLeft = Math.floor(timeUntilNextClaim / (1000 * 60 * 60));
-      const minutesLeft = Math.floor((timeUntilNextClaim % (1000 * 60 * 60)) / (1000 * 60));
-
-      return res.status(400).json({
-        success: false,
-        message: `Already claimed today. Next claim in ${hoursLeft}h ${minutesLeft}m`,
-        alreadyClaimed: true,
-        nextClaimTime: nextClaimTime.toISOString(),
-        hoursLeft,
-        minutesLeft
-      });
-    }
-
     // Award 100 UMI tokens
     const PRISM_REWARD_AMOUNT = 100;
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        $or: [
+          { 'prismReward.lastClaimDate': { $lt: todayMidnightUTC } },
+          { 'prismReward.lastClaimDate': null },
+          { 'prismReward.lastClaimDate': { $exists: false } }
+        ]
+      },
       {
         $inc: { tokenBalance: PRISM_REWARD_AMOUNT },
         $set: { 'prismReward.lastClaimDate': now }
       },
       { new: true }
     );
+
+    if (!updatedUser) {
+      const existingUser = await User.findById(userId).select('prismReward.lastClaimDate');
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const rewardStatus = getDailyRewardStatus(existingUser.prismReward?.lastClaimDate, now);
+      return res.status(400).json({
+        success: false,
+        message: `Already claimed today. Next claim in ${rewardStatus.hoursLeft}h ${rewardStatus.minutesLeft}m`,
+        alreadyClaimed: true,
+        nextClaimTime: rewardStatus.nextClaimTime.toISOString(),
+        hoursLeft: rewardStatus.hoursLeft,
+        minutesLeft: rewardStatus.minutesLeft
+      });
+    }
 
     console.log(`[PRISM Reward] User ${userId} claimed ${PRISM_REWARD_AMOUNT} UMI tokens. New balance: ${updatedUser.tokenBalance}`);
 
@@ -183,18 +181,34 @@ router.post('/claim-featured-app-reward', authenticateToken, async (req, res) =>
       });
     }
 
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
     const now = new Date();
-    const rewardStatus = getDailyRewardStatus(user.featuredAppReward?.lastClaimDate, now);
+    const todayMidnightUTC = getTodayMidnightUTC(now);
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        $or: [
+          { 'featuredAppReward.lastClaimDate': { $lt: todayMidnightUTC } },
+          { 'featuredAppReward.lastClaimDate': null },
+          { 'featuredAppReward.lastClaimDate': { $exists: false } }
+        ]
+      },
+      {
+        $inc: { tokenBalance: FEATURED_APP_REWARD_AMOUNT },
+        $set: { 'featuredAppReward.lastClaimDate': now }
+      },
+      { new: true }
+    );
 
-    if (!rewardStatus.canClaim) {
+    if (!updatedUser) {
+      const existingUser = await User.findById(userId).select('featuredAppReward.lastClaimDate');
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const rewardStatus = getDailyRewardStatus(existingUser.featuredAppReward?.lastClaimDate, now);
       return res.status(400).json({
         success: false,
         message: `Already claimed today. Next claim in ${rewardStatus.hoursLeft}h ${rewardStatus.minutesLeft}m`,
@@ -204,15 +218,6 @@ router.post('/claim-featured-app-reward', authenticateToken, async (req, res) =>
         minutesLeft: rewardStatus.minutesLeft
       });
     }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        $inc: { tokenBalance: FEATURED_APP_REWARD_AMOUNT },
-        $set: { 'featuredAppReward.lastClaimDate': now }
-      },
-      { new: true }
-    );
 
     console.log(`[FEATURED APP Reward] User ${userId} claimed ${FEATURED_APP_REWARD_AMOUNT} UMI tokens. New balance: ${updatedUser.tokenBalance}`);
 

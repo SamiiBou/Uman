@@ -36,16 +36,20 @@ contract Distributor is EIP712 {
         require(block.timestamp <= v.deadline, "expired");
         require(v.to == msg.sender, "not recipient");
 
+        // Replay protection must be bound to the recipient + nonce, not the full digest.
+        // Otherwise a new signature with the same nonce but a different deadline remains claimable.
+        bytes32 claimKey = keccak256(abi.encode(v.to, v.nonce));
+        require(!redeemed[claimKey], "already used");
+
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(
                 VOUCHER_TYPEHASH,
                 v.to, v.amount, v.nonce, v.deadline
             ))
         );
-        require(!redeemed[digest], "already used");
         require(ECDSA.recover(digest, sig) == signer, "bad sig");
 
-        redeemed[digest] = true;
+        redeemed[claimKey] = true;
         require(token.transfer(v.to, v.amount), "transfer failed");
         emit Claimed(v.to, v.amount);
     }

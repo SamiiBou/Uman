@@ -174,27 +174,6 @@ const RewardsHub = () => {
     let res = await postVoucher();
     let { data } = res;
 
-    // Cas particulier : “claim already pending…”
-    if (data.error?.startsWith("Claim already pending")) {
-      const pendingNonce = data.pending?.nonce;
-      if (!pendingNonce) {
-        setNotification({
-          show: true,
-          message: "Claim pending but backend did not return a nonce",
-          type: "error",
-        });
-        setIsLoading(false);
-        return;
-      }
-      await axios.post(
-        `${API_BASE_URL}/airdrop/cancel`,
-        { nonce: pendingNonce },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      res = await postVoucher();
-      data = res.data;
-    }
-
     /* ─────────────────────────────
      * 2. Validation stricte de la réponse
      * ────────────────────────────*/
@@ -236,12 +215,10 @@ const RewardsHub = () => {
       });
 
       if (finalPayload.status === "error") {
-        await axios.post(
-          `${API_BASE_URL}/airdrop/cancel`,
-          { nonce: voucher.nonce },
-          { headers: { Authorization: `Bearer ${token}` } }
+        throw new Error(
+          finalPayload.message ??
+          "Claim cancelled in wallet. The same voucher stays active for a few minutes if you want to retry."
         );
-        throw new Error(finalPayload.message ?? "User rejected");
       }
 
       /* ─────────────────────────
