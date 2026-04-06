@@ -119,11 +119,20 @@ if (!sessionSecret) {
 const sessionConfig = {
   secret: sessionSecret || 'un secret par défaut très faible', 
   resave: false, 
-  saveUninitialized: true, // Changé à true pour OAuth
+  // Save only sessions that have actually been modified.
+  // This avoids filling MongoDB with anonymous/unused sessions.
+  saveUninitialized: false,
   store: MongoStore.create({ 
       mongoUrl: MONGO_URI,
       collectionName: 'sessions', 
-      ttl: 14 * 24 * 60 * 60 
+      // Align DB session retention with the cookie lifetime.
+      ttl: 24 * 60 * 60,
+      // Avoid recreating a TTL index on every boot. Expired sessions are
+      // instead cleaned periodically by the app.
+      autoRemove: 'interval',
+      autoRemoveInterval: 10,
+      // Reduce write frequency for active sessions.
+      touchAfter: 24 * 3600
   }),
   cookie: {
       secure: clientUrl ? clientUrl.startsWith('https://') : false, // Forcé à true si le clientUrl est en HTTPS

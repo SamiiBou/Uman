@@ -49,11 +49,14 @@ async function distributeAutoTokens() {
       { 
         $inc: { tokenBalance: AUTO_REWARD_AMOUNT },
         $push: {
-          // Ajouter un historique de distribution automatique (optionnel)
+          // Keep only the most recent entries to avoid unbounded document growth.
           autoDistributionHistory: {
-            amount: AUTO_REWARD_AMOUNT,
-            timestamp: startTime,
-            type: 'auto_hourly'
+            $each: [{
+              amount: AUTO_REWARD_AMOUNT,
+              timestamp: startTime,
+              type: 'auto_hourly'
+            }],
+            $slice: -100
           }
         }
       }
