@@ -5,11 +5,22 @@ const DEFAULT_BACKEND_URL =
     ? 'http://localhost:3001'
     : 'https://uman-production.up.railway.app';
 
+const isLegacyRenderUrl = (value) =>
+  typeof value === 'string' && value.includes('uman.onrender.com');
+
+const rawBackendUrl = import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL;
+const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
 // URL du backend (sans /api)
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL;
+export const BACKEND_URL = isLegacyRenderUrl(rawBackendUrl)
+  ? DEFAULT_BACKEND_URL
+  : rawBackendUrl;
 
 // URL de base pour l'API backend
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${BACKEND_URL}/api`;
+export const API_BASE_URL =
+  !rawApiBaseUrl || isLegacyRenderUrl(rawApiBaseUrl)
+    ? `${BACKEND_URL}/api`
+    : rawApiBaseUrl;
 
 // Worldcoin App ID
 export const WORLDCOIN_APP_ID = import.meta.env.VITE_WORLDCOIN_APP_ID || '';
