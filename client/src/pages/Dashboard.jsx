@@ -1,10 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { FaCheck, FaInfoCircle, FaShieldAlt, FaLink, FaUnlink } from 'react-icons/fa';
+import { FaCheck, FaInfoCircle, FaShieldAlt, FaLink, FaUnlink, FaTwitter, FaDiscord, FaTelegramPlane } from 'react-icons/fa';
 import { Coins } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
 import { FEATURED_APP_URL, PRISM_APP_URL } from '../constants/worldApps';
+
+const supportedAccounts = [
+  {
+    key: 'twitter',
+    name: 'Twitter',
+    icon: <FaTwitter />,
+    apiUrl: `${API_BASE_URL}/auth/twitter`,
+  },
+  {
+    key: 'discord',
+    name: 'Discord',
+    icon: <FaDiscord />,
+    apiUrl: `${API_BASE_URL}/auth/discord`,
+  },
+  {
+    key: 'telegram',
+    name: 'Telegram',
+    icon: <FaTelegramPlane />,
+    apiUrl: `${API_BASE_URL}/auth/telegram`,
+  },
+];
 
 const Dashboard = () => {
   const { user, isLoading } = useAuth();
@@ -205,8 +226,8 @@ const Dashboard = () => {
   const avatarUrl = getAvatar();
 
   // Count verified social accounts
-  const connectedAccountsCount = Object.keys(user.social || {}).length || 0;
-  const totalPossibleAccounts = 5; // Google, Facebook, Twitter, Instagram, LinkedIn
+  const connectedAccountsCount = supportedAccounts.filter(({ key }) => !!user.social?.[key]).length;
+  const totalPossibleAccounts = supportedAccounts.length;
   const accountVerificationPercentage = Math.round((connectedAccountsCount / totalPossibleAccounts) * 100);
 
   return (
@@ -325,45 +346,15 @@ const Dashboard = () => {
         </div>
 
         <div className="accounts-mobile-list">
-          {/* Google Account */}
-          <SocialAccountCard
-            name="Google"
-            icon="google"
-            isConnected={!!user.social?.google}
-            apiUrl={`${API_BASE_URL}/auth/google`}
-          />
-
-          {/* Facebook Account */}
-          <SocialAccountCard
-            name="Facebook"
-            icon="facebook"
-            isConnected={!!user.social?.facebook}
-            apiUrl={`${API_BASE_URL}/auth/facebook`}
-          />
-
-          {/* Twitter Account */}
-          <SocialAccountCard
-            name="Twitter"
-            icon="twitter"
-            isConnected={!!user.social?.twitter}
-            apiUrl={`${API_BASE_URL}/auth/twitter`}
-          />
-
-          {/* Instagram Account */}
-          <SocialAccountCard
-            name="Instagram"
-            icon="instagram"
-            isConnected={!!user.social?.instagram}
-            apiUrl={`${API_BASE_URL}/auth/instagram`}
-          />
-
-          {/* LinkedIn Account */}
-          <SocialAccountCard
-            name="LinkedIn"
-            icon="linkedin"
-            isConnected={!!user.social?.linkedin}
-            apiUrl={`${API_BASE_URL}/auth/linkedin`}
-          />
+          {supportedAccounts.map((account) => (
+            <SocialAccountCard
+              key={account.key}
+              name={account.name}
+              icon={account.icon}
+              isConnected={!!user.social?.[account.key]}
+              apiUrl={account.apiUrl}
+            />
+          ))}
         </div>
       </div>
 
@@ -632,8 +623,8 @@ const SocialAccountCard = ({ name, icon, isConnected, apiUrl }) => {
 
   return (
     <div className={`social-account-card ${isConnected ? 'connected' : ''}`}>
-      <div className={`social-icon social-${icon.toLowerCase()}`}>
-        <i className={`icon-${icon.toLowerCase()}`}></i>
+      <div className="social-icon">
+        {icon}
       </div>
       <div className="social-info">
         <h3>{name}</h3>

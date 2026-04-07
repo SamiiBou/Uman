@@ -3,10 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { 
   FaShieldAlt, 
   FaTwitter, 
-  FaFacebookF, 
-  FaInstagram, 
-  FaGoogle, 
-  FaLinkedinIn,
+  FaDiscord,
+  FaTelegramPlane,
   FaCheck,
   FaEye,
   FaEyeSlash,
@@ -15,6 +13,30 @@ import {
   FaUserShield
 } from 'react-icons/fa';
 import { API_BASE_URL } from '../config';
+
+const supportedAccounts = [
+  {
+    key: 'twitter',
+    name: 'Twitter',
+    icon: <FaTwitter />,
+    iconColor: '#1DA1F2',
+    apiUrl: `${API_BASE_URL}/auth/twitter`,
+  },
+  {
+    key: 'discord',
+    name: 'Discord',
+    icon: <FaDiscord />,
+    iconColor: '#5865F2',
+    apiUrl: `${API_BASE_URL}/auth/discord`,
+  },
+  {
+    key: 'telegram',
+    name: 'Telegram',
+    icon: <FaTelegramPlane />,
+    iconColor: '#229ED9',
+    apiUrl: `${API_BASE_URL}/auth/telegram`,
+  },
+];
 
 const Profile = () => {
   const { user, isLoading } = useAuth();
@@ -89,8 +111,11 @@ const Profile = () => {
   const avatarUrl = getAvatar();
 
   // Calculate verification score based on connected accounts
-  const socialAccountsCount = Object.keys(user.social || {}).length || 0;
-  const verificationScore = Math.min(Math.round((socialAccountsCount * 20)), 100);
+  const socialAccountsCount = supportedAccounts.filter(({ key }) => !!user.social?.[key]).length;
+  const verificationScore = Math.min(
+    Math.round((socialAccountsCount / supportedAccounts.length) * 100),
+    100
+  );
 
   const renderTabContent = () => {
     switch(activeTab) {
@@ -280,45 +305,16 @@ const Profile = () => {
             </div>
             
             <div className="social-accounts">
-              <SocialAccountItem 
-                name="Twitter"
-                icon={<FaTwitter />}
-                iconColor="#1DA1F2"
-                isConnected={!!user.social?.twitter}
-                apiUrl={`${API_BASE_URL}/auth/twitter`}
-              />
-              
-              <SocialAccountItem 
-                name="Facebook"
-                icon={<FaFacebookF />}
-                iconColor="#1877F2"
-                isConnected={!!user.social?.facebook}
-                apiUrl={`${API_BASE_URL}/auth/facebook`}
-              />
-              
-              <SocialAccountItem 
-                name="Instagram"
-                icon={<FaInstagram />}
-                iconColor="#C13584"
-                isConnected={!!user.social?.instagram}
-                apiUrl={`${API_BASE_URL}/auth/instagram`}
-              />
-              
-              <SocialAccountItem 
-                name="Google"
-                icon={<FaGoogle />}
-                iconColor="#DB4437"
-                isConnected={!!user.social?.google}
-                apiUrl={`${API_BASE_URL}/auth/google`}
-              />
-              
-              <SocialAccountItem 
-                name="LinkedIn"
-                icon={<FaLinkedinIn />}
-                iconColor="#0077B5"
-                isConnected={!!user.social?.linkedin}
-                apiUrl={`${API_BASE_URL}/auth/linkedin`}
-              />
+              {supportedAccounts.map((account) => (
+                <SocialAccountItem
+                  key={account.key}
+                  name={account.name}
+                  icon={account.icon}
+                  iconColor={account.iconColor}
+                  isConnected={!!user.social?.[account.key]}
+                  apiUrl={account.apiUrl}
+                />
+              ))}
             </div>
             
             <div className="privacy-note card-highlight" style={{ marginTop: '2rem', padding: '1rem' }}>

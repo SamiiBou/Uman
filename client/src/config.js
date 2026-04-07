@@ -1,10 +1,15 @@
 // Configuration centralisée pour l'application
 
-// URL de base pour l'API backend
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://uman.onrender.com/api';
+const DEFAULT_BACKEND_URL =
+  import.meta.env.MODE === 'development'
+    ? 'http://localhost:3001'
+    : 'https://uman-production.up.railway.app';
 
 // URL du backend (sans /api)
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://uman.onrender.com';
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || DEFAULT_BACKEND_URL;
+
+// URL de base pour l'API backend
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${BACKEND_URL}/api`;
 
 // Worldcoin App ID
 export const WORLDCOIN_APP_ID = import.meta.env.VITE_WORLDCOIN_APP_ID || '';
@@ -24,4 +29,3 @@ console.log('🔧 Configuration:', {
   backendUrl: BACKEND_URL,
   isProduction: IS_PRODUCTION
 });
-

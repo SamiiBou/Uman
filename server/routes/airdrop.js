@@ -42,6 +42,7 @@ export const setSocketIO = (socket) => { io = socket; };
 
 const CLAIM_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const LEGACY_CLAIM_TTL_MS = 3600 * 1000; // 1 hour
+const CLAIMS_HISTORY_LIMIT = 200;
 
 function buildVoucher(to, amount, nonce, deadline) {
   return {
@@ -173,7 +174,12 @@ async function monitorTx(userId, txId, nonce) {
       const amount = user.claimPending.amount;
       const update = {
         $unset: { claimPending: '' },
-        $push: { claimsHistory: { amount, txHash, at: new Date() } }
+        $push: {
+          claimsHistory: {
+            $each: [{ amount, txHash, at: new Date() }],
+            $slice: -CLAIMS_HISTORY_LIMIT
+          }
+        }
       };
       if (!user.claimPending.reserved) {
         update.$inc = { tokenBalance: -amount };
