@@ -1,13 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import eruda from 'eruda';
 import App from './App'
 import './index.css'
 import { AuthProvider } from './context/AuthContext';
 import MiniKitProvider from "./minikit-provider";
-// import eruda from 'eruda';
 
-// Activer Eruda en production
-// eruda.init();
+if (typeof window !== 'undefined' && !window.eruda) {
+  eruda.init();
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
