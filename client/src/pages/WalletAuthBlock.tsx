@@ -7,6 +7,18 @@ import { BACKEND_URL } from '../config';
 
 const API_TIMEOUT = 15000;
 
+function getRequestErrorMessage(error) {
+  if (axios.isAxiosError(error)) {
+    if (error.code === 'ERR_NETWORK') {
+      return 'Backend unavailable. Check Railway deployment and public URL.';
+    }
+
+    return error.response?.data?.message || error.message;
+  }
+
+  return error instanceof Error ? error.message : 'Unknown authentication error';
+}
+
 export const WalletAuthBlock = () => {
   const [authError, setAuthError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,17 +105,21 @@ export const WalletAuthBlock = () => {
     try {
       // Premier appel pour initialiser l'authentification
       // Cela va souvent déclencher l'initialisation du wallet dans MiniKit
-      const nonceResponse = await axios.get(`${BACKEND_URL}/api/auth/nonce`, {
-        withCredentials: true,
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        timeout: API_TIMEOUT
-      }).catch(err => {
-        console.error("Error getting nonce:", err);
-        return { data: { nonce: `fallback-${Date.now()}`, nonceId: `fallback-${Date.now()}` } };
-      });
+      let nonceResponse;
+
+      try {
+        nonceResponse = await axios.get(`${BACKEND_URL}/api/auth/nonce`, {
+          withCredentials: true,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          timeout: API_TIMEOUT
+        });
+      } catch (error) {
+        console.error("Error getting nonce:", error);
+        throw new Error(getRequestErrorMessage(error));
+      }
       
       const { nonce, nonceId } = nonceResponse.data;
       
@@ -129,16 +145,8 @@ export const WalletAuthBlock = () => {
       
       // *** IMPORTANT: Attendre que le wallet address soit disponible
       // console.log("Auth successful, now waiting for MiniKit wallet address to be available");
-      const walletAdressePayLoad = await MiniKit.commandsAsync.walletAuth({
-        nonce,
-        requestId: "0",
-        expirationTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        notBefore: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        statement: "Sign in to SocialID - Connect with blockchain.",
-      });
-
       // console.log("Auth successful, now waiting for MiniKit wallet address to be available");
-      const walletAddress = walletAdressePayLoad.finalPayload.address;
+      const walletAddress = authPayload.address || await getWalletAddress();
       // console.log("Wallet address after auth:", walletAddress);
 
 
@@ -212,7 +220,10 @@ export const WalletAuthBlock = () => {
       // console.log("Sending SIWE payload to backend with username:", minikitUsername);
       // console.log("Using wallet address:", addrToUse);
         
-      const siweResponse = await axios.post(
+      let siweResponse;
+
+      try {
+        siweResponse = await axios.post(
           `${BACKEND_URL}/api/auth/complete-siwe`,
           { 
             payload: authPayload, 
@@ -229,10 +240,11 @@ export const WalletAuthBlock = () => {
             },
             timeout: API_TIMEOUT
           }
-        ).catch(err => {
-          console.error("SIWE completion error:", err);
-          return { data: { status: "error", isValid: false, message: err.message } };
-        });
+        );
+      } catch (error) {
+        console.error("SIWE completion error:", error);
+        throw new Error(getRequestErrorMessage(error));
+      }
       
       const verificationResult = siweResponse.data;
       

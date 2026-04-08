@@ -49,6 +49,9 @@ import mongoose from 'mongoose';
 // Initialiser l'application Express
 const app = express();
 
+const isRailwayRuntime = Object.keys(process.env).some((key) => key.startsWith('RAILWAY_'));
+const sessionStoreMode = process.env.SESSION_STORE_MODE || (isRailwayRuntime ? 'memory' : 'mongo');
+
 // Make models available to the app
 app.set('models', { User });
 const PORT = process.env.PORT || 3001;
@@ -122,9 +125,19 @@ const sessionConfig = {
   // Save only sessions that have actually been modified.
   // This avoids filling MongoDB with anonymous/unused sessions.
   saveUninitialized: false,
-  store: MongoStore.create({ 
+  cookie: {
+      secure: clientUrl ? clientUrl.startsWith('https://') : false, // Forcé à true si le clientUrl est en HTTPS
+      httpOnly: true, 
+      maxAge: 1000 * 60 * 60 * 24, 
+      sameSite: 'none'  
+  }
+};
+
+if (sessionStoreMode === 'mongo') {
+  try {
+    const mongoSessionStore = MongoStore.create({
       mongoUrl: MONGO_URI,
-      collectionName: 'sessions', 
+      collectionName: 'sessions',
       // Align DB session retention with the cookie lifetime.
       ttl: 24 * 60 * 60,
       // Avoid recreating a TTL index on every boot. Expired sessions are
@@ -133,14 +146,19 @@ const sessionConfig = {
       autoRemoveInterval: 10,
       // Reduce write frequency for active sessions.
       touchAfter: 24 * 3600
-  }),
-  cookie: {
-      secure: clientUrl ? clientUrl.startsWith('https://') : false, // Forcé à true si le clientUrl est en HTTPS
-      httpOnly: true, 
-      maxAge: 1000 * 60 * 60 * 24, 
-      sameSite: 'none'  
+    });
+
+    mongoSessionStore.on('error', (error) => {
+      console.error('[SERVER] Erreur du store de session MongoDB:', error);
+    });
+
+    sessionConfig.store = mongoSessionStore;
+  } catch (error) {
+    console.error('[SERVER] Impossible de configurer le store MongoDB pour les sessions. Fallback mémoire:', error);
   }
-};
+} else {
+  console.warn(`[SERVER] SESSION_STORE_MODE=${sessionStoreMode}. Utilisation du store mémoire pour les sessions.`);
+}
 
 // Si le frontend est sur HTTPS (comme ngrok), nous devons forcer secure à true
 if (clientUrl && clientUrl.startsWith('https://')) {
@@ -199,6 +217,22 @@ app.get('/', (req, res) => {
     console.log('User sur /', req.user);     
     res.send(`API SocialID en cours d\'exécution! SessionID: ${req.sessionID}, Authentifié: ${req.isAuthenticated()}`);
 });
+
+app.get('/healthz', (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      sessionStoreMode: sessionStoreMode === 'mongo' && sessionConfig.store ? 'mongo' : 'memory',
+      mongodbReadyState: mongoose.connection.readyState
+    });
+});
+
+app.get('/api/healthz', (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      sessionStoreMode: sessionStoreMode === 'mongo' && sessionConfig.store ? 'mongo' : 'memory',
+      mongodbReadyState: mongoose.connection.readyState
+    });
+});
 app.use('/api/s3', s3Routes);
 console.log('[SERVER] Routes S3 configurées.')
 // --- Gestionnaire d'erreurs global (exemple simple) ---
@@ -238,7 +272,8 @@ app.listen(PORT, () => {
     }
     console.log(`🔑 Secret de session ${sessionSecret ? 'défini' : 'NON DÉFINI (insécurisé)'}`);
     console.log(`🔒 Cookie de session: secure=${sessionConfig.cookie.secure}, httpOnly=${sessionConfig.cookie.httpOnly}, sameSite=${sessionConfig.cookie.sameSite}`);
-    console.log(`💾 Sessions stockées dans MongoDB: ${MONGO_URI ? 'Oui' : 'Non'}`);
+    console.log(`💾 Sessions stockées dans MongoDB: ${sessionStoreMode === 'mongo' && sessionConfig.store ? 'Oui' : 'Non'}`);
+    console.log(`🗂️ Mode de session: ${sessionStoreMode === 'mongo' && sessionConfig.store ? 'mongo' : 'memory'}`);
     console.log(`--------------------------`);
 
 });
