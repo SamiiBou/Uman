@@ -6,8 +6,14 @@ import './index.css'
 import { AuthProvider } from './context/AuthContext';
 import MiniKitProvider from "./minikit-provider";
 
-if (typeof window !== 'undefined' && !window.eruda) {
-  eruda.init();
+if (typeof window !== 'undefined') {
+  const erudaInstance = window.eruda || eruda;
+
+  if (!erudaInstance._isInit) {
+    erudaInstance.init();
+  }
+
+  erudaInstance.show();
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
