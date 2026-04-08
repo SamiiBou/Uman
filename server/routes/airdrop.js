@@ -98,6 +98,113 @@ async function clearPendingClaim(userId, claimPending) {
   return result.modifiedCount > 0;
 }
 
+async function finalizePendingClaim(userId, nonce, txHash) {
+  const user = await User.findById(userId).select('claimPending tokenBalance');
+  if (!user?.claimPending || String(user.claimPending.nonce) !== String(nonce)) {
+    return false;
+  }
+
+  const amount = user.claimPending.amount;
+  const update = {
+    $unset: { claimPending: '' },
+    $push: {
+      claimsHistory: {
+        $each: [{ amount, txHash, at: new Date() }],
+        $slice: -CLAIMS_HISTORY_LIMIT
+      }
+    }
+  };
+
+  if (!user.claimPending.reserved) {
+    update.$inc = { tokenBalance: -amount };
+  }
+
+  const result = await User.updateOne(
+    { _id: userId, 'claimPending.nonce': String(nonce) },
+    update
+  );
+
+  return result.modifiedCount > 0;
+}
+
+async function fetchWorldcoinTransaction(txId) {
+  if (!txId || !process.env.APP_ID) {
+    return null;
+  }
+
+  const wcUrl =
+    `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}` +
+    `?app_id=${process.env.APP_ID}&type=transaction`;
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (process.env.API_KEY) {
+    headers.Authorization = `Bearer ${process.env.API_KEY}`;
+  }
+
+  const wcResp = await fetch(wcUrl, { headers });
+  if (!wcResp.ok) {
+    const text = await wcResp.text();
+    throw new Error(`Worldcoin transaction lookup failed: HTTP ${wcResp.status} – ${text || '[no body]'}`);
+  }
+
+  return wcResp.json();
+}
+
+async function fetchReceiptSafely(txHash) {
+  if (!txHash) {
+    return null;
+  }
+
+  try {
+    return await provider.getTransactionReceipt(txHash);
+  } catch (error) {
+    console.error(`[AIRDROP] Failed to fetch receipt for txHash=${txHash}:`, error);
+    return null;
+  }
+}
+
+async function reconcilePendingClaim(userId, claimPending) {
+  if (!claimPending?.txId) {
+    return { status: 'not_applicable' };
+  }
+
+  const tx = await fetchWorldcoinTransaction(claimPending.txId);
+  const txStatus = tx?.transaction_status || tx?.transactionStatus || null;
+  const txHash = tx?.transaction_hash || tx?.transactionHash || null;
+
+  if (txStatus === 'mined') {
+    const receipt = await fetchReceiptSafely(txHash);
+    if (receipt?.status === 1) {
+      const finalized = await finalizePendingClaim(userId, claimPending.nonce, txHash);
+      return { status: finalized ? 'confirmed' : 'stale', txHash };
+    }
+
+    if (receipt?.status === 0) {
+      const cleared = await clearPendingClaim(userId, claimPending);
+      return { status: cleared ? 'failed' : 'stale', txHash };
+    }
+
+    const finalized = await finalizePendingClaim(
+      userId,
+      claimPending.nonce,
+      txHash || claimPending.txId
+    );
+    return { status: finalized ? 'confirmed' : 'stale', txHash };
+  }
+
+  if (txStatus === 'failed') {
+    const cleared = await clearPendingClaim(userId, claimPending);
+    return { status: cleared ? 'failed' : 'stale', txHash };
+  }
+
+  if (isClaimExpired(claimPending)) {
+    const cleared = await clearPendingClaim(userId, claimPending);
+    return { status: cleared ? 'expired' : 'stale', txHash };
+  }
+
+  return { status: 'pending', txHash };
+}
+
 async function monitorTx(userId, txId, nonce) {
   console.log(`[monitorTx] 🔍 Starting monitorTx for user=${userId}, txId=${txId}, nonce=${nonce}`);
   let retryCount = 0;
@@ -105,20 +212,13 @@ async function monitorTx(userId, txId, nonce) {
 
   for (;;) {
     try {
-      const wcUrl = `https://developer.worldcoin.org/api/v2/minikit/transaction/${txId}` +
-                    `?app_id=${process.env.APP_ID}&type=transaction`;
-      console.log(`[monitorTx] ⏳ Fetching Worldcoin status from ${wcUrl}`);
-      const wcResp = await fetch(wcUrl, {
-        headers: {
-          'Authorization': `Bearer ${process.env.API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log(`[monitorTx] 🌐 Worldcoin response ok=${wcResp.ok} (status=${wcResp.status})`);
+      console.log(`[monitorTx] ⏳ Fetching Worldcoin status for txId=${txId}`);
+      const wc = await fetchWorldcoinTransaction(txId);
+      const txStatus = wc.transaction_status || wc.transactionStatus;
+      console.log(`[monitorTx] 🌐 Worldcoin transaction status=${txStatus}`);
 
-      if (!wcResp.ok) {
-        const text = await wcResp.text();
-        console.error(`[monitorTx] ❌ Failed to fetch Worldcoin status: HTTP ${wcResp.status} – ${text || '[no body]'}`);
+      if (!txStatus) {
+        console.error(`[monitorTx] ❌ Missing transaction status for txId=${txId}`);
         retryCount++;
         if (retryCount >= MAX_RETRIES) {
           console.error(`[monitorTx] ⚠️ Trop de tentatives infructueuses, on abandonne le monitorTx pour txId=${txId}`);
@@ -129,13 +229,10 @@ async function monitorTx(userId, txId, nonce) {
         continue;
       }
 
-      // → ici, on a wcResp.ok===true
-      const wc = await wcResp.json();
       console.log('[monitorTx] Worldcoin payload:', wc);
 
       // Notez que la propriété dans la réponse est snake_case, pas camelCase
       // Doc : transaction_status (snake_case) :contentReference[oaicite:2]{index=2}
-      const txStatus = wc.transaction_status || wc.transactionStatus;
       if (txStatus === 'pending') {
         console.log(`[monitorTx] Transaction ${txId} toujours en pending`);
         await wait(5000);
@@ -157,36 +254,27 @@ async function monitorTx(userId, txId, nonce) {
       console.log(`[monitorTx] Transaction confirmée, hash=${txHash}`);
 
       // Récupérer le receipt on-chain
-      const receipt = await provider.getTransactionReceipt(txHash);
-      if (!receipt || receipt.status !== 1) {
-        console.log('[monitorTx] Receipt pas encore prêt ou failed, on retente…');
-        await wait(5000);
-        continue;
+      const receipt = await fetchReceiptSafely(txHash);
+      if (receipt?.status === 0) {
+        console.log('[monitorTx] Receipt failed, clearing pending claim');
+        const failedUser = await User.findById(userId).select('claimPending');
+        if (failedUser?.claimPending && String(failedUser.claimPending.nonce) === String(nonce)) {
+          await clearPendingClaim(userId, failedUser.claimPending);
+        }
+        io?.to(userId).emit('claim_failed', { nonce, txHash });
+        return;
       }
 
       // Finaliser en base
-      const user = await User.findById(userId).select('claimPending tokenBalance');
-      if (!user?.claimPending) {
+      const finalizedUser = await User.findById(userId).select('claimPending');
+      if (!finalizedUser?.claimPending) {
         console.warn(`[monitorTx] Aucun claimPending pour user ${userId}, on stoppe.`);
         return;
       }
 
-      const amount = user.claimPending.amount;
-      const update = {
-        $unset: { claimPending: '' },
-        $push: {
-          claimsHistory: {
-            $each: [{ amount, txHash, at: new Date() }],
-            $slice: -CLAIMS_HISTORY_LIMIT
-          }
-        }
-      };
-      if (!user.claimPending.reserved) {
-        update.$inc = { tokenBalance: -amount };
-      }
-
-      await User.updateOne({ _id: userId, 'claimPending.nonce': String(nonce) }, update);
-      io?.to(userId).emit('claim_confirmed', { amount });
+      const amount = finalizedUser.claimPending.amount;
+      await finalizePendingClaim(userId, nonce, txHash || txId);
+      io?.to(userId).emit('claim_confirmed', { amount, txHash });
       console.log(`[monitorTx] 🏁 monitorTx terminé pour txId=${txId}`);
       return;
 
@@ -221,11 +309,23 @@ export const resumePendingTransactions = async () => {
       .select('claimPending _id');
 
     console.log(`[resumePendingTransactions] Found ${pendings.length} pending claims`);
-    pendings.forEach(u => {
+    for (const u of pendings) {
+      try {
+        const reconciliation = await reconcilePendingClaim(u._id, u.claimPending);
+        if (reconciliation.status !== 'pending') {
+          console.log(
+            `[resumePendingTransactions] Reconciled user=${u._id} status=${reconciliation.status} txHash=${reconciliation.txHash ?? 'n/a'}`
+          );
+          continue;
+        }
+      } catch (err) {
+        console.error(`[resumePendingTransactions] Reconcile failed for user=${u._id}:`, err);
+      }
+
       console.log(`[resumePendingTransactions] Resuming user=${u._id}, txId=${u.claimPending.txId}`);
       monitorTx(u._id, u.claimPending.txId, u.claimPending.nonce)
         .catch(err => console.error('[resumePendingTransactions] Error:', err));
-    });
+    }
     return pendings.length;
   } catch (err) {
     console.error('[resumePendingTransactions] Fatal:', err);
@@ -254,6 +354,20 @@ router.post('/request', auth, async (req, res) => {
 
     // Handle expired pending
     if (user.claimPending) {
+      if (user.claimPending.txId) {
+        try {
+          const reconciliation = await reconcilePendingClaim(user._id, user.claimPending);
+          if (reconciliation.status !== 'pending') {
+            user = await User.findById(req.user.id).select('walletAddress tokenBalance claimPending');
+          }
+        } catch (err) {
+          console.error('[AIRDROP/request] Failed to reconcile pending claim:', err);
+        }
+      }
+
+      if (!user?.claimPending) {
+        // Pending claim was reconciled or cleared, continue with normal claim flow.
+      } else {
       const noTxId = !user.claimPending.txId;
       const ttlExceeded = isClaimExpired(user.claimPending);
       
@@ -313,6 +427,7 @@ router.post('/request', auth, async (req, res) => {
             retryAfterSeconds: getRetryAfterSeconds(user.claimPending),
           },
         });
+      }
       }
     }
 

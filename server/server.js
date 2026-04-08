@@ -29,7 +29,7 @@ import User from './models/User.js';
 // Charger les variables d'environnement depuis .env à la racine du projet
 import path from 'path';
 
-import airdropRoutes from './routes/airdrop.js'   
+import airdropRoutes, { resumePendingTransactions } from './routes/airdrop.js'   
 
 // 🆕 Import du service de distribution automatique
 import { startAutoTokenDistribution } from './services/autoTokenDistributor.js';
@@ -74,6 +74,14 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
     .then(() => {
         console.log('MongoDB connecté avec succès.');
+
+        resumePendingTransactions()
+          .then((count) => {
+            console.log(`[SERVER] Pending claims checked on startup: ${count}`);
+          })
+          .catch((error) => {
+            console.error('[SERVER] Failed to resume pending claims on startup:', error);
+          });
         
         // 🆕 Démarrer le service de distribution automatique après la connexion MongoDB
         console.log('[SERVER] Démarrage du service de distribution automatique...');
