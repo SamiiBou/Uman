@@ -495,7 +495,9 @@ router.get('/token-balance/:walletAddress', async (req, res) => {
     console.log("🔍 Attempting RPC URL:", process.env.RPC_URL);
 
     const provider = new JsonRpcProvider(
-      process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/v2/vCq59BHgMYA2JIRKAbRPmIL8OaTeRAgu'
+      process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/public',
+      480,
+      { staticNetwork: true }
     );
 
     // Créer le contrat - Correction pour ethers v6

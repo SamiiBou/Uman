@@ -13,6 +13,8 @@ const router = Router();
 /* ⚙️  CONFIG                                                         */
 /* ------------------------------------------------------------------ */
 const DISTRIBUTOR = '0x36a4E57057f9EE65d5b26bfF883b62Ad47D4B775';
+const WORLDCHAIN_CHAIN_ID = 480;
+const WORLDCHAIN_RPC_URL = process.env.RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/public';
 const signerPk    = process.env.TOKEN_PRIVATE_KEY;
 if (!signerPk) throw new Error('TOKEN_PRIVATE_KEY must be set in .env');
 const signer = new ethers.Wallet(signerPk);
@@ -33,9 +35,9 @@ const VOUCHER_TYPES = {
   ],
 };
 
-const provider = new ethers.JsonRpcProvider(
-  process.env.RPC_URL ?? 'https://worldchain-mainnet.g.alchemy.com/v2/YOUR_KEY'
-);
+const provider = new ethers.JsonRpcProvider(WORLDCHAIN_RPC_URL, WORLDCHAIN_CHAIN_ID, {
+  staticNetwork: true,
+});
 
 let io;
 export const setSocketIO = (socket) => { io = socket; };

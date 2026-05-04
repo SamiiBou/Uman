@@ -6,7 +6,6 @@ import { MiniKit, Permission } from "@worldcoin/minikit-js";
 import head from './head.png';
 import AskNotifPermission from './AskNotifPermission';
 import useDebugNotifications from './useDebugNotifications';
-import AdSenseAuto from '../components/AdSenseAuto';
 import { BACKEND_URL } from '../config';
 
 const API_TIMEOUT = 15000;
@@ -426,15 +425,6 @@ const Home = () => {
           <img src={head} alt="Logo" className="logo" />
         </div>
         
-        {/* AdSense Banner */}
-        <div className="ad-container">
-          <AdSenseAuto 
-            slot="2494391307"
-            className="mx-auto my-4"
-            style={{ maxWidth: '320px' }}
-          />
-        </div>
-        
         <motion.div
           className="connect-container"
           initial={{ opacity: 0 }}
@@ -573,6 +563,20 @@ const Home = () => {
           position: fixed;
           width: 100%;
           height: 100%;
+          background-color: #f4e9b7;
+        }
+
+        .app,
+        .container {
+          background-color: #f4e9b7;
+        }
+
+        .app > .container {
+          max-width: none;
+          min-height: 100dvh;
+          width: 100vw;
+          margin: 0 !important;
+          padding: 0 !important;
         }
 
         .app-container {
@@ -580,13 +584,12 @@ const Home = () => {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          min-height: 100vh;
-          height: 100vh;
+          min-height: 100dvh;
+          height: 100dvh;
           width: 100vw;
           padding: 0;
           position: fixed;
-          top: 0;
-          left: 0;
+          inset: 0;
           overflow: hidden;
           font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
           margin: 0;
@@ -618,14 +621,6 @@ const Home = () => {
           transition: all 0.3s ease;
         }
         
-        .ad-container {
-          width: 100%;
-          display: flex;
-          justify-content: center;
-          padding: 10px 0;
-          margin: 10px 0;
-        }
-        
         .connect-container {
           width: 100%;
           display: flex;
@@ -652,17 +647,17 @@ const Home = () => {
           padding: 10px 12px;
           border-radius: 10px;
           border: 1px solid rgba(242, 128, 17, 0.3);
-          background-color: rgba(255, 255, 255, 0.5);
+          background-color: transparent;
           font-size: 14px;
           color: #303421;
           transition: all 0.3s ease;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+          box-shadow: none;
         }
         
         .referral-input:focus {
           outline: none;
           border-color: #f28011;
-          box-shadow: 0 4px 8px rgba(242, 128, 17, 0.2);
+          box-shadow: 0 0 0 3px rgba(242, 128, 17, 0.12);
           transform: translateY(-1px);
         }
         
@@ -766,13 +761,13 @@ const Home = () => {
           gap: 8px;
           padding: 12px;
           border-radius: 12px;
-          background-color: rgba(255, 255, 255, 0.08);
+          background-color: transparent;
           cursor: pointer;
           transition: all 0.3s ease;
         }
         
         .connect-area:hover {
-          background-color: rgba(255, 255, 255, 0.15);
+          background-color: transparent;
         }
         
         .swipe-instruction {
@@ -786,7 +781,8 @@ const Home = () => {
           position: relative;
           width: 100%;
           height: 40px;
-          background-color: rgba(255, 255, 255, 0.2);
+          background-color: transparent;
+          border: 1px solid rgba(242, 128, 17, 0.24);
           border-radius: 20px;
           overflow: hidden;
         }
